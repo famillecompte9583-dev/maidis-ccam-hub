@@ -1,0 +1,36 @@
+name: Update CCAM data and watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 5 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Lancer la mise à jour CCAM
+        run: python scripts/update_all.py
+
+      - name: Vérifier les changements
+        run: |
+          git status
+          git diff --stat
+
+      - name: Commit automatique si changement
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Mise à jour automatique CCAM et veille"
+          file_pattern: data/app-data.json data/app-data.js
