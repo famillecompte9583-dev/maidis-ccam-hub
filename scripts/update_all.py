@@ -8,8 +8,12 @@
 import datetime, json, pathlib, re, urllib.request, xml.etree.ElementTree as ET
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CCAM_URL = "https://data.smartidf.services/api/records/1.0/download/?dataset=healthref-france-ccam&format=json"
+# Liste de flux RSS utilisés pour enrichir la veille. Les sources citées ici doivent
+# être fiables et institutionnelles. On a volontairement supprimé le flux de la
+# Faculté de chirurgie dentaire de Strasbourg à la demande de l'utilisateur.
 RSS_FEEDS = [
-    ("Faculté de chirurgie dentaire de Strasbourg", "https://chirurgie-dentaire.unistra.fr/actualites/feed.xml"),
+    # Exemple : pour inclure un autre flux, décommentez ou ajoutez une ligne :
+    # ("Assurance Maladie – Actualités", "https://www.ameli.fr/rss/actualites.xml"),
 ]
 
 # Liste de pages Ameli à analyser pour extraire des documents (PDF) pertinents
@@ -116,38 +120,132 @@ def read_rss():
 # ---------------------------------------------------------------------------
 # Ameli documents scraping helper
 # ---------------------------------------------------------------------------
-def fetch_ameli_documents():
-    """Scrape les documents PDF depuis les pages Ameli listées.
+def download_pdf(url, target_dir):
+    """Télécharge un PDF si possible et retourne le chemin local.
+
+    Enregistre le fichier dans target_dir en conservant le nom de fichier.
+    Si le téléchargement échoue, renvoie None.
+    """
+    try:
+        # Certains serveurs refusent les requêtes sans User-Agent complet.
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Maidis-CCAM-Hub)"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = r.read()
+        target_dir.mkdir(parents=True, exist_ok=True)
+        filename = pathlib.Path(url.split("/")[-1])
+        path = target_dir / filename
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+    except Exception as e:
+        print("Échec téléchargement", url, e)
+        return None
+
+
+def extract_codes_from_pdf(path):
+    """Analyse un PDF local pour extraire les codes CCAM (pattern ABCD123).
+
+    Utilise une expression régulière pour repérer les codes. Renvoie un ensemble
+    de codes trouvés. Si l’analyse échoue ou qu’aucun code n’est trouvé,
+    renvoie un ensemble vide.
+    """
+    codes = set()
+    try:
+        import re as _re
+        import pdfplumber
+        with pdfplumber.open(path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                for match in _re.findall(r"[A-Z]{4}[0-9]{3}", text):
+                    codes.add(match)
+        return codes
+    except Exception as e:
+        print("Analyse PDF impossible", path, e)
+        return codes
+
+
+def summarize_pdf(path, max_chars=300):
+    """Extrait un résumé simple d’un PDF.
+
+    On prend les premiers caractères du texte du PDF. Si l’extraction échoue,
+    renvoie une chaîne vide.
+    """
+    try:
+        import pdfplumber
+        with pdfplumber.open(path) as pdf:
+            text = " ".join((page.extract_text() or "") for page in pdf.pages)
+        text = text.strip().replace("\n", " ")
+        return text[:max_chars] + ("…" if len(text) > max_chars else "")
+    except Exception:
+        return ""
+
+
+def fetch_ameli_documents(records):
+    """Scrape les documents PDF depuis les pages Ameli listées et les intègre.
 
     Pour chaque URL de AMELI_DOC_PAGES, récupère le HTML, cherche les liens
-    pointant vers des fichiers PDF et renvoie une liste de dictionnaires
-    normalisés. Chaque entrée contient la date du jour, la source "Ameli",
-    le titre nettoyé et l'URL complète du PDF.
+    vers des fichiers PDF et télécharge ces fichiers. Chaque entrée retournée
+    contient la date du jour, la source "Ameli", le titre, l’URL complète du
+    PDF, un tag, un résumé et la liste des codes détectés. Les codes
+    identifiés mais absents des données CCAM sont ajoutés à la base avec
+    des valeurs placeholders.
     """
     docs = []
+    new_codes = set()
     for name, page_url in AMELI_DOC_PAGES:
         try:
             html_bytes = fetch(page_url)
             html = html_bytes.decode("utf-8", errors="ignore")
-            # Expression régulière : capture href vers .pdf et le texte affiché
             for m in re.finditer(r'<a[^>]+href="(?P<href>[^"]+\.pdf)"[^>]*>(?P<title>[^<]+)</a>', html, re.IGNORECASE):
                 pdf_url = m.group("href").strip()
-                # Si l'URL est relative, préfixe avec le domaine
                 if pdf_url.startswith("/"):
                     pdf_url = "https://www.ameli.fr" + pdf_url
                 title = m.group("title").strip()
-                docs.append(
-                    {
-                        "date": datetime.date.today().isoformat(),
-                        "source": "Ameli",
-                        "title": title,
-                        "url": pdf_url,
-                        "tag": "Convention",
-                    }
-                )
+                # Télécharge le PDF et tente d’extraire des codes et un résumé
+                temp_dir = ROOT / "cache" / "pdf"
+                local_pdf = download_pdf(pdf_url, temp_dir)
+                summary = ""
+                codes_found = set()
+                if local_pdf:
+                    codes_found = extract_codes_from_pdf(local_pdf)
+                    summary = summarize_pdf(local_pdf)
+                    # Ajoute les codes à la collection globale
+                    new_codes |= codes_found
+                docs.append({
+                    "date": datetime.date.today().isoformat(),
+                    "source": "Ameli",
+                    "title": title,
+                    "url": pdf_url,
+                    "tag": "Convention",
+                    "summary": summary,
+                    "codes": sorted(list(codes_found)),
+                })
         except Exception as e:
-            # Ne bloque pas la génération en cas d'erreur
             print("Ameli docs ignorés", page_url, e)
+    # Ajoute dans la base tout code inconnu détecté dans les PDF
+    existing_codes = {r["code"] for r in records}
+    for code in new_codes:
+        if code not in existing_codes:
+            # Crée un enregistrement minimal avec une note indiquant qu’il provient d’un document
+            records.append({
+                "code": code,
+                "activite": "",
+                "phase": "",
+                "libelle": "Code issu d’un document Ameli (détails à vérifier)",
+                "brss": None,
+                "tarif_secteur_1_optam": None,
+                "taux_amo_standard": None,
+                "montant_amo_standard": None,
+                "panier_100_sante": "À vérifier",
+                "certitude_panier": "Basse",
+                "justification_panier": "Code non présent dans la base CCAM, détecté dans un document Ameli.",
+                "perimetre_panier_100_sante": False,
+                "hors_perimetre_panier": True,
+                "domaine": "Médical CCAM",
+                "accord_prealable": "",
+                "code_maidis_suggere": f"{code}--",
+                "notes_parametrage": "Code détecté automatiquement à partir d’un document Ameli. Complétez manuellement ses informations."
+            })
     return docs
 
 def main():
@@ -183,8 +281,10 @@ def main():
         "source": "CCAM open data + règles Ameli 100 % Santé + veille RSS",
         "version": "v3-maidis"
     }
-    # Combine RSS items and documents scrapés depuis Ameli
-    news_items = read_rss() + fetch_ameli_documents()
+    # Combine RSS items et documents scrapés depuis Ameli. On transmet
+    # la liste des enregistrements pour que fetch_ameli_documents puisse
+    # ajouter d’éventuels nouveaux codes à la base.
+    news_items = read_rss() + fetch_ameli_documents(records)
     # Limite à 40 éléments pour ne pas alourdir la page
     news_items = news_items[:40]
     app={

@@ -1,0 +1,29 @@
+/* Fichier complémentaire pour personnaliser l’interface.
+   Ce fichier est chargé après style.css afin de surcharger certains styles.
+*/
+
+/* Logo de la ville de Saint‑Ouen‑sur‑Seine après le nom du site */
+.brand::after {
+  content: "";
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  margin-left: 8px;
+  background-image: url('img/saint-ouen.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+}
+
+/* Effet de fond animé pour moderniser l’interface. On étend la définition
+   existante du body et on ajoute une animation de gradient. */
+body {
+  background-size: 400% 400%;
+  animation: gradientShift 50s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

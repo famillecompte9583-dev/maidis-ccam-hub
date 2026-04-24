@@ -1,1 +1,11 @@
+// Chargement dynamique du fichier custom.css si présent.
+(function(){
+    try{
+        const link=document.createElement('link');
+        link.rel='stylesheet';
+        link.href='custom.css';
+        document.head.appendChild(link);
+    }catch(e){/* ignore */}
+})();
+
 function fmtEuro(v){return v===null||v===undefined||Number.isNaN(Number(v))?'—':Number(v).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});}function clsPanier(p){p=(p||'').toLowerCase();if(p.startsWith('rac 0'))return'p-rac';if(p.startsWith('rac mod'))return'p-mod';if(p.includes('libre')||p.includes('vérifier'))return'p-free';return'p-out'}function qs(k){return new URLSearchParams(location.search).get(k)}function setActive(){const p=document.body.dataset.page;document.querySelectorAll('.links a').forEach(a=>{if(a.dataset.page===p)a.classList.add('active')});const btn=document.querySelector('.menu'),links=document.querySelector('.links');if(btn&&links)btn.onclick=()=>links.classList.toggle('open')}document.addEventListener('DOMContentLoaded',setActive);function downloadText(filename,text,type='text/csv;charset=utf-8'){const blob=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
