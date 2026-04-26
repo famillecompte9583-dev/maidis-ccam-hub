@@ -8,7 +8,7 @@ on:
       - scripts/update_all.py
       - .github/workflows/update-all.yml
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: annuaire-ccam-update
