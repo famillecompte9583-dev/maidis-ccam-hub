@@ -1,2 +1,2 @@
-manual update requested at 2026-04-26T20:52:00+02:00
-reason: solution ultime - relance après synchronisation robuste multi-sources, anti-écrasement et statut de diagnostic
+manual update requested at 2026-04-26T22:35:00+02:00
+reason: final verification after robust CCAM sync now reports 12494 valid records and fresh status ok
