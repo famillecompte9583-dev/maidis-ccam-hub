@@ -1,427 +1,207 @@
 #!/usr/bin/env python3
-"""Reconstruit la base embarquée du site.
-
-Objectifs :
-- récupérer la CCAM open data ;
-- recalculer les champs utiles au paramétrage Maidis ;
-- récupérer une veille institutionnelle côté serveur ;
-- produire data/app-data.json et data/app-data.js utilisables hors ligne.
-
-Le script privilégie des sources publiques et institutionnelles. Il utilise des
-reprises réseau propres, des en-têtes HTTP réalistes et un repli local pour que
-la mise à jour ne casse pas le site lorsqu'une source externe refuse ou limite
-une requête.
+"""Générateur de données pour Annuaire CCAM Santé.
+Produit data/app-data.json et data/app-data.js avec : actes, veille, dossiers et changements.
 """
-
 from __future__ import annotations
-
-import datetime as dt
-import html
-import json
-import pathlib
-import random
-import re
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
+import datetime as dt, html, json, pathlib, random, re, time, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
-from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-CACHE_DIR = ROOT / "cache" / "pdf"
-
+DATA = ROOT / "data"
+CACHE = ROOT / "cache" / "pdf"
 CCAM_URL = "https://data.smartidf.services/api/records/1.0/download/?dataset=healthref-france-ccam&format=json"
-
-RSS_FEEDS: list[tuple[str, str]] = [
-    # Sources RSS institutionnelles uniquement.
-]
-
-AMELI_DOC_PAGES: list[tuple[str, str]] = [
-    (
-        "convention_dentistes",
-        "https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/convention-nationale-2023-2028",
-    ),
-    (
-        "calendrier_convention",
-        "https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/calendrier-mesures-conventionnelles",
-    ),
-    (
-        "ccam_medecins",
-        "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam",
-    ),
-]
-
-STATIC_NEWS = [
-    {
-        "source": "Ameli",
-        "title": "Tarifs conventionnels et honoraires limites dentaires",
-        "url": "https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/facturation-remuneration/tarifs-conventionnels/tarifs",
-        "tag": "Tarifs",
-    },
-    {
-        "source": "Ameli",
-        "title": "Matériaux et actes prothétiques inclus dans l'offre 100 % Santé dentaire",
-        "url": "https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/prescription-prise-charge/materieux-actes-prothetiques-100-sante-dentaire",
-        "tag": "100 % Santé",
-    },
-    {
-        "source": "Ameli",
-        "title": "CCAM : codage des actes médicaux et téléchargement des versions PDF/Excel",
-        "url": "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam",
-        "tag": "CCAM",
-    },
-]
-
-RAC0 = set(
-    "HBKD140 HBKD212 HBKD213 HBKD244 HBKD300 HBKD396 HBKD431 HBKD462 "
-    "HBLD031 HBLD032 HBLD033 HBLD035 HBLD038 HBLD083 HBLD090 HBLD101 "
-    "HBLD123 HBLD138 HBLD148 HBLD203 HBLD215 HBLD224 HBLD231 HBLD232 "
-    "HBLD259 HBLD262 HBLD349 HBLD350 HBLD364 HBLD370 HBLD474 HBLD490 "
-    "HBLD634 HBLD680 HBLD734 HBLD785".split()
-)
-MOD = set("HBLD040 HBLD043 HBLD073 HBLD131 HBLD158 HBLD227 HBLD332 HBLD486 HBLD491 HBLD724 HBLD745".split())
-
-PROTH_TERMS = [
-    "couronne dentaire",
-    "prothese dentaire",
-    "prothèse dentaire",
-    "prothese amovible",
-    "prothèse amovible",
-    "bridge",
-    "inlay core",
-    "infrastructure coronoradiculaire",
-]
-DENTAL_TERMS = [
-    "dentaire",
-    "dent",
-    "bucco",
-    "bouche",
-    "mandibul",
-    "maxill",
-    "gingiv",
-    "parodont",
-    "pulpe",
-    "carie",
-    "racine",
-    "couronne",
-    "prothese dentaire",
-    "prothèse dentaire",
-    "bridge",
-    "incisive",
-    "canine",
-    "molaire",
-    "premolaire",
-    "prémolaire",
-    "edent",
-    "édent",
-    "occlus",
-    "arcade dentaire",
-    "alveol",
-    "alvéol",
-    "orthodont",
-    "endodont",
-    "detartrage",
-    "détartrage",
-    "inlay",
-    "onlay",
-    "plaque base résine",
-    "scellement prophylactique",
-    "sillons",
-]
-
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15",
     "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
-    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36",
 ]
+RSS_FEEDS = []
+AMELI_DOC_PAGES = [
+    ("convention_dentistes", "https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/convention-nationale-2023-2028"),
+    ("calendrier_convention", "https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/calendrier-mesures-conventionnelles"),
+    ("ccam_medecins", "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam"),
+]
+ARTICLE_SOURCES = [
+    {"id":"convention-dentaire-2023-2028","category":"Dentaire","tag":"Convention","title":"Convention dentaire 2023-2028 : ce qu'il faut retenir","url":"https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/convention-nationale-2023-2028"},
+    {"id":"calendrier-mesures-conventionnelles","category":"Dentaire","tag":"Calendrier","title":"Calendrier des mesures conventionnelles : points de vigilance","url":"https://www.ameli.fr/chirurgien-dentiste/textes-reference/convention/calendrier-mesures-conventionnelles"},
+    {"id":"tarifs-dentaires","category":"Tarifs","tag":"Tarifs","title":"Tarifs conventionnels dentaires : repères pratiques","url":"https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/facturation-remuneration/tarifs-conventionnels/tarifs"},
+    {"id":"cent-pour-cent-sante-dentaire","category":"100 % Santé","tag":"100 % Santé","title":"100 % Santé dentaire : actes, matériaux et paniers de soins","url":"https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/prescription-prise-charge/materieux-actes-prothetiques-100-sante-dentaire"},
+    {"id":"codage-ccam-medecins","category":"CCAM","tag":"CCAM","title":"Codage CCAM : retrouver et contrôler les actes médicaux","url":"https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam"},
+]
+STATIC_NEWS = [{"date":dt.date.today().isoformat(),"source":"Ameli","title":s[0],"url":s[1],"tag":s[2]} for s in [
+    ("Tarifs conventionnels et honoraires limites dentaires","https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/facturation-remuneration/tarifs-conventionnels/tarifs","Tarifs"),
+    ("Matériaux et actes prothétiques inclus dans l'offre 100 % Santé dentaire","https://www.ameli.fr/chirurgien-dentiste/exercice-liberal/prescription-prise-charge/materieux-actes-prothetiques-100-sante-dentaire","100 % Santé"),
+    ("CCAM : codage des actes médicaux et téléchargement des versions PDF/Excel","https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam","CCAM"),
+]]
+RAC0 = set("HBKD140 HBKD212 HBKD213 HBKD244 HBKD300 HBKD396 HBKD431 HBKD462 HBLD031 HBLD032 HBLD033 HBLD035 HBLD038 HBLD083 HBLD090 HBLD101 HBLD123 HBLD138 HBLD148 HBLD203 HBLD215 HBLD224 HBLD231 HBLD232 HBLD259 HBLD262 HBLD349 HBLD350 HBLD364 HBLD370 HBLD474 HBLD490 HBLD634 HBLD680 HBLD734 HBLD785".split())
+MOD = set("HBLD040 HBLD043 HBLD073 HBLD131 HBLD158 HBLD227 HBLD332 HBLD486 HBLD491 HBLD724 HBLD745".split())
+PROTH_TERMS = ["couronne dentaire","prothese dentaire","prothèse dentaire","prothese amovible","prothèse amovible","bridge","inlay core","infrastructure coronoradiculaire"]
+DENTAL_TERMS = "dentaire dent bucco bouche mandibul maxill gingiv parodont pulpe carie racine couronne prothese prothèse bridge incisive canine molaire premolaire prémolaire edent édent occlus arcade alveol alvéol orthodont endodont detartrage détartrage inlay onlay résine sillons".split()
 
+def now_fr():
+    return dt.datetime.now(dt.timezone.utc).astimezone(dt.timezone(dt.timedelta(hours=2), name="Europe/Paris"))
 
-def today() -> str:
-    return dt.date.today().isoformat()
-
-
-def fetch(url: str, *, timeout: int = 60, retries: int = 4) -> bytes:
-    """Télécharge une ressource avec reprises et en-têtes HTTP compatibles navigateur."""
-    last_error: Exception | None = None
+def fetch(url, timeout=60, retries=4):
+    last = None
     for attempt in range(retries):
-        headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml,application/json,application/pdf,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Cache-Control": "no-cache",
-        }
-        request = urllib.request.Request(url, headers=headers)
+        req = urllib.request.Request(url, headers={"User-Agent": random.choice(USER_AGENTS), "Accept":"text/html,application/json,application/pdf,*/*", "Accept-Language":"fr-FR,fr;q=0.9", "Cache-Control":"no-cache"})
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                return response.read()
-        except urllib.error.HTTPError as exc:
-            last_error = exc
-            if exc.code not in {403, 408, 409, 425, 429, 500, 502, 503, 504}:
-                raise
-        except Exception as exc:  # noqa: BLE001
-            last_error = exc
-        time.sleep(min(2 ** attempt, 10) + random.random())
-    if last_error:
-        raise last_error
-    raise RuntimeError(f"Téléchargement impossible : {url}")
+            with urllib.request.urlopen(req, timeout=timeout) as r: return r.read()
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code not in {403,408,409,425,429,500,502,503,504}: raise
+        except Exception as e:
+            last = e
+        time.sleep(min(2**attempt,10)+random.random())
+    raise last or RuntimeError(url)
 
+def fnum(v):
+    if v in (None, ""): return None
+    try: return round(float(str(v).replace(",", ".")), 2)
+    except Exception: return None
 
-def to_float(value: Any) -> float | None:
-    if value in (None, ""):
-        return None
+def dental(lib):
+    t=(lib or "").lower(); return any(x in t for x in DENTAL_TERMS)
+
+def panier_scope(code, lib):
+    t=(lib or "").lower(); return code in RAC0 or code in MOD or any(x in t for x in PROTH_TERMS)
+
+def classify(code, lib):
+    if code in RAC0: return "RAC 0 / 100 % Santé", "Haute", "Code prothétique reconnu dans le panier sans reste à charge."
+    if code in MOD: return "RAC modéré / tarif maîtrisé", "Haute", "Code prothétique reconnu dans le panier à honoraires maîtrisés."
+    if panier_scope(code, lib): return "Tarif libre ou à vérifier", "Moyenne", "Acte prothétique ou bucco-dentaire détecté, à vérifier selon le contexte."
+    return "Hors périmètre panier 100 % Santé", "Haute", "Cet acte n'entre pas dans le périmètre des paniers 100 % Santé dentaires."
+
+def normalize(raw):
+    x = raw.get("fields", raw); code=str(x.get("code","")).strip(); lib=str(x.get("libelle","")).strip(); brss=fnum(x.get("tarif_1") or x.get("tarif_base") or x.get("brss"))
+    if not code or brss is None: return None
+    isdent=dental(lib); scope=panier_scope(code,lib); pan,cert,why=classify(code,lib); taux=60 if isdent or scope else 70; amo=round(brss*taux/100,2)
+    return {"code":code,"activite":str(x.get("activite","")),"phase":str(x.get("phase","")),"libelle":lib,"brss":brss,"tarif_secteur_1_optam":brss,"taux_amo_standard":taux,"montant_amo_standard":amo,"panier_100_sante":pan,"certitude_panier":cert,"justification_panier":why,"perimetre_panier_100_sante":scope,"hors_perimetre_panier":not scope,"domaine":"Bucco-dentaire / stomatologie" if isdent or scope else "Médical CCAM","accord_prealable":x.get("accord_prealable") or "","code_maidis_suggere":f"{code}-{x.get('activite','')}-{x.get('phase','')}","notes_parametrage":"Taux et montant AMO indicatifs : à ajuster selon contexte patient, majorations et règles applicables."}
+
+def local_app():
+    p=DATA/"app-data.json"
+    if not p.exists(): return {}
+    try: return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e: print("Lecture locale impossible", e); return {}
+
+def load_records():
     try:
-        return round(float(str(value).replace(",", ".")), 2)
-    except Exception:
-        return None
+        raw=json.loads(fetch(CCAM_URL).decode("utf-8")); raw=raw.get("records", raw) if isinstance(raw,dict) else raw
+        rec=[r for r in (normalize(i) for i in raw) if r]
+        if rec: return rec
+    except Exception as e: print("CCAM en ligne indisponible, repli local", e)
+    return local_app().get("records", [])
 
+def clean_text(src):
+    src=re.sub(r"<script\b.*?</script>|<style\b.*?</style>"," ",src,flags=re.I|re.S)
+    src=re.sub(r"<(nav|footer|header|aside)\b.*?</\1>"," ",src,flags=re.I|re.S)
+    src=re.sub(r"<(h[1-3]|p|li|td|th)\b[^>]*>","\n",src,flags=re.I)
+    src=re.sub(r"<[^>]+>"," ",src); src=html.unescape(src); return re.sub(r"\s+"," ",src).strip()
 
-def is_dentalish(libelle: str) -> bool:
-    text = (libelle or "").lower()
-    return any(term in text for term in DENTAL_TERMS)
+def codes(text): return set(re.findall(r"\b[A-Z]{4}[0-9]{3}\b", text or ""))
 
+def sentences(text, n=6):
+    keys="ccam tarif honoraire convention dentaire santé prise en charge acte remboursement prothèse panier".split()
+    out=[]
+    for s in re.split(r"(?<=[.!?])\s+", text):
+        s=s.strip(); low=s.lower()
+        if 70 <= len(s) <= 320 and any(k in low for k in keys): out.append(s)
+        if len(out)>=n: break
+    return out or [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if 70 <= len(s.strip()) <= 320][:n]
 
-def is_panier_scope(code: str, libelle: str) -> bool:
-    text = (libelle or "").lower()
-    return code in RAC0 or code in MOD or any(term in text for term in PROTH_TERMS)
+def pdf_links(page_url, page):
+    pat=re.compile(r"<a\b[^>]*href=[\"'](?P<href>[^\"']+\.pdf(?:\?[^\"']*)?)[\"'][^>]*>(?P<title>.*?)</a>",re.I|re.S); seen=set(); out=[]
+    for m in pat.finditer(page):
+        url=urllib.parse.urljoin(page_url, html.unescape(m.group("href").strip()))
+        title=re.sub(r"<[^>]+>"," ",m.group("title")); title=re.sub(r"\s+"," ",html.unescape(title)).strip() or pathlib.Path(url).name
+        if url not in seen: out.append((title,url)); seen.add(url)
+    return out
 
+def pdf_name(url): return re.sub(r"[^A-Za-z0-9_.-]","_", pathlib.Path(urllib.parse.urlparse(url).path).name or "document.pdf")
 
-def classify_panier(code: str, libelle: str) -> tuple[str, str, str]:
-    if code in RAC0:
-        return "RAC 0 / 100 % Santé", "Haute", "Code prothétique reconnu dans le panier sans reste à charge."
-    if code in MOD:
-        return "RAC modéré / tarif maîtrisé", "Haute", "Code prothétique reconnu dans le panier à honoraires maîtrisés."
-    if is_panier_scope(code, libelle):
-        return (
-            "Tarif libre ou à vérifier",
-            "Moyenne",
-            "Acte prothétique/bucco-dentaire détecté, mais non présent dans les listes embarquées RAC 0/modéré.",
-        )
-    return (
-        "Hors périmètre panier 100 % Santé",
-        "Haute",
-        "Les paniers 100 % Santé concernent les prothèses dentaires : couronnes, bridges et prothèses amovibles. Cet acte n'entre pas dans ce périmètre.",
-    )
-
-
-def normalize_record(raw: dict[str, Any]) -> dict[str, Any] | None:
-    fields = raw.get("fields", raw)
-    code = str(fields.get("code", "")).strip()
-    libelle = str(fields.get("libelle", "")).strip()
-    brss = to_float(fields.get("tarif_1") or fields.get("tarif_base") or fields.get("brss"))
-    if not code or brss is None:
-        return None
-    dental = is_dentalish(libelle)
-    scope = is_panier_scope(code, libelle)
-    panier, certitude, reason = classify_panier(code, libelle)
-    taux = 60 if dental or scope else 70
-    amo = round(brss * taux / 100, 2)
-    return {
-        "code": code,
-        "activite": str(fields.get("activite", "")),
-        "phase": str(fields.get("phase", "")),
-        "libelle": libelle,
-        "brss": brss,
-        "tarif_secteur_1_optam": brss,
-        "taux_amo_standard": taux,
-        "montant_amo_standard": amo,
-        "panier_100_sante": panier,
-        "certitude_panier": certitude,
-        "justification_panier": reason,
-        "perimetre_panier_100_sante": scope,
-        "hors_perimetre_panier": not scope,
-        "domaine": "Bucco-dentaire / stomatologie" if dental or scope else "Médical CCAM",
-        "accord_prealable": fields.get("accord_prealable") or "",
-        "code_maidis_suggere": f"{code}-{fields.get('activite', '')}-{fields.get('phase', '')}",
-        "notes_parametrage": "Taux et montant AMO indicatifs : à ajuster selon contexte patient (ALD, maternité, AT/MP, C2S, Alsace-Moselle, DOM), majorations et règles Maidis.",
-    }
-
-
-def load_local_records() -> list[dict[str, Any]]:
-    path = DATA_DIR / "app-data.json"
-    if not path.exists():
-        return []
+def download_pdf(url):
     try:
-        return json.loads(path.read_text(encoding="utf-8")).get("records", [])
-    except Exception as exc:  # noqa: BLE001
-        print("Lecture des données locales impossible", exc)
-        return []
+        data=fetch(url)
+        if not data.startswith(b"%PDF"): return None
+        CACHE.mkdir(parents=True, exist_ok=True); p=CACHE/pdf_name(url); p.write_bytes(data); return p
+    except Exception as e: print("PDF ignoré", url, e); return None
 
-
-def load_ccam_records() -> list[dict[str, Any]]:
-    try:
-        raw = json.loads(fetch(CCAM_URL).decode("utf-8"))
-        if isinstance(raw, dict) and "records" in raw:
-            raw = raw["records"]
-        records = [record for record in (normalize_record(item) for item in raw) if record]
-        if records:
-            return records
-    except Exception as exc:  # noqa: BLE001
-        print("Impossible de récupérer la CCAM en ligne, utilisation du repli local", exc)
-    return load_local_records()
-
-
-def read_rss() -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for source, url in RSS_FEEDS:
-        try:
-            root = ET.fromstring(fetch(url))
-            for item in root.findall(".//item")[:5]:
-                title = (item.findtext("title") or "").strip()
-                link = (item.findtext("link") or "").strip()
-                date = (item.findtext("pubDate") or today()).strip()
-                if title and link:
-                    items.append({"date": date, "source": source, "title": title, "url": link, "tag": "RSS"})
-        except Exception as exc:  # noqa: BLE001
-            print("RSS ignoré", source, exc)
-    items.extend({"date": today(), **item} for item in STATIC_NEWS)
-    return items[:20]
-
-
-def extract_pdf_links(page_url: str, html_text: str) -> list[tuple[str, str]]:
-    links: list[tuple[str, str]] = []
-    pattern = re.compile(r"<a\b[^>]*href=[\"'](?P<href>[^\"']+\.pdf(?:\?[^\"']*)?)[\"'][^>]*>(?P<title>.*?)</a>", re.I | re.S)
-    for match in pattern.finditer(html_text):
-        href = html.unescape(match.group("href").strip())
-        title = re.sub(r"<[^>]+>", " ", match.group("title"))
-        title = re.sub(r"\s+", " ", html.unescape(title)).strip() or pathlib.Path(href).name
-        links.append((title, urllib.parse.urljoin(page_url, href)))
-    seen: set[str] = set()
-    unique: list[tuple[str, str]] = []
-    for title, url in links:
-        if url not in seen:
-            unique.append((title, url))
-            seen.add(url)
-    return unique
-
-
-def safe_pdf_filename(url: str) -> str:
-    name = pathlib.Path(urllib.parse.urlparse(url).path).name or "document.pdf"
-    return re.sub(r"[^A-Za-z0-9_.-]", "_", name)
-
-
-def download_pdf(url: str) -> pathlib.Path | None:
-    try:
-        data = fetch(url)
-        if not data.startswith(b"%PDF"):
-            print("Document ignoré, contenu non PDF", url)
-            return None
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path = CACHE_DIR / safe_pdf_filename(url)
-        path.write_bytes(data)
-        return path
-    except Exception as exc:  # noqa: BLE001
-        print("Échec téléchargement", url, exc)
-        return None
-
-
-def extract_codes_from_pdf(path: pathlib.Path) -> set[str]:
-    codes: set[str] = set()
+def pdf_text(path, pages=6):
     try:
         import pdfplumber
+        with pdfplumber.open(path) as pdf: txt=" ".join((p.extract_text() or "") for p in pdf.pages[:pages])
+        return re.sub(r"\s+"," ",txt).strip()
+    except Exception as e: print("Analyse PDF impossible", path, e); return ""
 
-        with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text() or ""
-                codes.update(re.findall(r"\b[A-Z]{4}[0-9]{3}\b", text))
-    except Exception as exc:  # noqa: BLE001
-        print("Analyse PDF impossible", path, exc)
-    return codes
-
-
-def summarize_pdf(path: pathlib.Path, max_chars: int = 300) -> str:
-    try:
-        import pdfplumber
-
-        with pdfplumber.open(path) as pdf:
-            text = " ".join((page.extract_text() or "") for page in pdf.pages[:3])
-        text = re.sub(r"\s+", " ", text).strip()
-        return text[:max_chars] + ("…" if len(text) > max_chars else "")
-    except Exception:
-        return ""
-
-
-def fetch_ameli_documents(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    docs: list[dict[str, Any]] = []
-    new_codes: set[str] = set()
-    for _name, page_url in AMELI_DOC_PAGES:
+def docs_from_ameli(records):
+    docs=[]; found=set()
+    for _,url in AMELI_DOC_PAGES:
         try:
-            page = fetch(page_url).decode("utf-8", errors="ignore")
-            for title, pdf_url in extract_pdf_links(page_url, page):
-                local_pdf = download_pdf(pdf_url)
-                codes_found: set[str] = set()
-                summary = ""
-                if local_pdf:
-                    codes_found = extract_codes_from_pdf(local_pdf)
-                    summary = summarize_pdf(local_pdf)
-                    new_codes.update(codes_found)
-                docs.append({
-                    "date": today(),
-                    "source": "Ameli",
-                    "title": title,
-                    "url": pdf_url,
-                    "tag": "Document",
-                    "summary": summary,
-                    "codes": sorted(codes_found),
-                })
-        except Exception as exc:  # noqa: BLE001
-            print("Ameli docs ignorés", page_url, exc)
-
-    existing_codes = {record["code"] for record in records}
-    for code in sorted(new_codes - existing_codes):
-        records.append({
-            "code": code,
-            "activite": "",
-            "phase": "",
-            "libelle": "Code issu d'un document Ameli (détails à vérifier)",
-            "brss": None,
-            "tarif_secteur_1_optam": None,
-            "taux_amo_standard": None,
-            "montant_amo_standard": None,
-            "panier_100_sante": "À vérifier",
-            "certitude_panier": "Basse",
-            "justification_panier": "Code non présent dans la base CCAM, détecté dans un document Ameli.",
-            "perimetre_panier_100_sante": False,
-            "hors_perimetre_panier": True,
-            "domaine": "Médical CCAM",
-            "accord_prealable": "",
-            "code_maidis_suggere": f"{code}--",
-            "notes_parametrage": "Code détecté automatiquement à partir d'un document Ameli. Complétez manuellement ses informations.",
-        })
+            page=fetch(url).decode("utf-8", errors="ignore")
+            for title,pdfurl in pdf_links(url,page):
+                p=download_pdf(pdfurl); text=pdf_text(p,10) if p else ""; c=codes(text); found |= c
+                docs.append({"date":dt.date.today().isoformat(),"source":"Ameli","title":title,"url":pdfurl,"tag":"Document","summary":text[:300]+("…" if len(text)>300 else ""),"codes":sorted(c)})
+        except Exception as e: print("Docs ignorés", url, e)
+    known={r["code"] for r in records}
+    for code in sorted(found-known):
+        records.append({"code":code,"activite":"","phase":"","libelle":"Code détecté dans un document institutionnel (à vérifier)","brss":None,"tarif_secteur_1_optam":None,"taux_amo_standard":None,"montant_amo_standard":None,"panier_100_sante":"À vérifier","certitude_panier":"Basse","justification_panier":"Code non présent dans la base principale, détecté dans un document de référence.","perimetre_panier_100_sante":False,"hors_perimetre_panier":True,"domaine":"Médical CCAM","accord_prealable":"","code_maidis_suggere":f"{code}--","notes_parametrage":"Information détectée automatiquement : à vérifier avant utilisation."})
     return docs
 
+def rss_news():
+    items=[]
+    for src,url in RSS_FEEDS:
+        try:
+            root=ET.fromstring(fetch(url))
+            for it in root.findall(".//item")[:5]:
+                title=(it.findtext("title") or "").strip(); link=(it.findtext("link") or "").strip(); date=(it.findtext("pubDate") or dt.date.today().isoformat()).strip()
+                if title and link: items.append({"date":date,"source":src,"title":title,"url":link,"tag":"RSS"})
+        except Exception as e: print("RSS ignoré", src, e)
+    return (items+STATIC_NEWS)[:20]
 
-def build_meta(records: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        "generated": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
-        "timezone": dt.datetime.now().astimezone().tzinfo.tzname(None),
-        "total": len(records),
-        "medical": sum(1 for r in records if r["domaine"] == "Médical CCAM"),
-        "bucco_dentaire": sum(1 for r in records if r["domaine"] != "Médical CCAM"),
-        "hors_perimetre_panier": sum(1 for r in records if r["hors_perimetre_panier"]),
-        "rac0": sum(1 for r in records if str(r["panier_100_sante"]).startswith("RAC 0")),
-        "modere": sum(1 for r in records if str(r["panier_100_sante"]).startswith("RAC modéré")),
-        "source": "CCAM open data + règles Ameli 100 % Santé + veille institutionnelle",
-        "version": "v4-maidis-robuste",
-    }
+def make_article(source):
+    text=""; pfiles=[]
+    try:
+        page=fetch(source["url"]).decode("utf-8", errors="ignore"); text=clean_text(page); pfiles=pdf_links(source["url"],page)[:4]
+    except Exception as e: print("Article page ignorée", source["url"], e)
+    ptxt=[]; allcodes=codes(text)
+    for title,url in pfiles:
+        p=download_pdf(url); txt=pdf_text(p,5) if p else ""; allcodes |= codes(txt)
+        if txt: ptxt.append(f"{title} : {txt[:220]}{'…' if len(txt)>220 else ''}")
+    bits=sentences(text+" "+" ".join(ptxt),6); summary=bits[0] if bits else "Synthèse automatique d'une source institutionnelle suivie par l'annuaire."
+    c=sorted(allcodes)[:120]
+    body="".join([
+        "<p>Ce dossier synthétise les informations utiles issues d'une source institutionnelle suivie par l'annuaire. Il sert d'aide à la lecture et renvoie toujours vers la source officielle.</p>",
+        "<h2>À retenir</h2><ul>", "".join(f"<li>{html.escape(x)}</li>" for x in bits[:4]), "</ul>",
+        "<h2>Impact pratique</h2><p>Les éléments relevés doivent être rapprochés des actes CCAM, des tarifs de base, du panier de soins et du contexte patient avant toute décision de facturation ou de paramétrage.</p>",
+        "<h2>Codes détectés</h2><p>", html.escape(", ".join(c) if c else "Aucun code CCAM explicite détecté automatiquement dans le contenu analysé."), "</p>",
+        f"<p class=\"small\">Source officielle : <a href=\"{html.escape(source['url'])}\" target=\"_blank\" rel=\"noopener\">consulter la page d'origine</a>.</p>"
+    ])
+    return {"id":source["id"],"title":source["title"],"date":dt.date.today().isoformat(),"source":"Ameli","source_url":source["url"],"category":source["category"],"tag":source["tag"],"summary":summary,"content_html":body,"codes":c,"confidence":"Haute" if text else "Moyenne"}
 
+def build_articles(records):
+    arts=[make_article(s) for s in ARTICLE_SOURCES]
+    link={}
+    for a in arts:
+        for c in a.get("codes",[]): link.setdefault(c,[]).append(a["id"])
+    for r in records:
+        if r.get("code") in link: r["articles_lies"]=link[r["code"]][:8]
+    return arts
 
-def main() -> None:
-    records = load_ccam_records()
-    news_items = (read_rss() + fetch_ameli_documents(records))[:40]
-    app = {
-        "meta": build_meta(records),
-        "records": records,
-        "news": news_items,
-        "profiles": {"medical_standard": 70, "dental_standard": 60, "user_example": 70},
-    }
-    DATA_DIR.mkdir(exist_ok=True)
-    (DATA_DIR / "app-data.json").write_text(json.dumps(app, ensure_ascii=False, indent=2), encoding="utf-8")
-    (DATA_DIR / "app-data.js").write_text("window.CCAM_APP_DATA = " + json.dumps(app, ensure_ascii=False) + ";\n", encoding="utf-8")
-    print("OK", app["meta"])
+def key(r): return f"{r.get('code','')}|{r.get('activite','')}|{r.get('phase','')}"
 
+def changes(prev, cur):
+    old={key(r):r for r in prev if r.get("code")}; new={key(r):r for r in cur if r.get("code")}; mod=[]
+    for k in sorted(set(old)&set(new)):
+        b,a=old[k],new[k]; fields=[f for f in ["libelle","brss","panier_100_sante","domaine","accord_prealable"] if b.get(f)!=a.get(f)]
+        if fields: mod.append({"code":a.get("code"),"activite":a.get("activite"),"phase":a.get("phase"),"libelle":a.get("libelle"),"fields":fields,"before":{f:b.get(f) for f in fields},"after":{f:a.get(f) for f in fields}})
+    added=sorted(set(new)-set(old)); removed=sorted(set(old)-set(new))
+    return {"date":now_fr().isoformat(timespec="seconds"),"added_count":len(added),"removed_count":len(removed),"modified_count":len(mod),"added":[new[k] for k in added[:80]],"removed":[old[k] for k in removed[:80]],"modified":mod[:120]}
 
-if __name__ == "__main__":
-    main()
+def meta(records):
+    return {"generated":now_fr().isoformat(timespec="seconds"),"timezone":"Europe/Paris","total":len(records),"medical":sum(1 for r in records if r["domaine"]=="Médical CCAM"),"bucco_dentaire":sum(1 for r in records if r["domaine"]!="Médical CCAM"),"hors_perimetre_panier":sum(1 for r in records if r["hors_perimetre_panier"]),"rac0":sum(1 for r in records if str(r["panier_100_sante"]).startswith("RAC 0")),"modere":sum(1 for r in records if str(r["panier_100_sante"]).startswith("RAC modéré")),"source":"CCAM open data + veille institutionnelle","version":"v5-annuaire-dossiers"}
+
+def main():
+    prev=local_app().get("records",[]); records=load_records(); news=(rss_news()+docs_from_ameli(records))[:40]; articles=build_articles(records); app={"meta":meta(records),"records":records,"news":news,"articles":articles,"changes":changes(prev,records),"profiles":{"medical_standard":70,"dental_standard":60,"user_example":70}}
+    DATA.mkdir(exist_ok=True); (DATA/"app-data.json").write_text(json.dumps(app,ensure_ascii=False,indent=2),encoding="utf-8"); (DATA/"app-data.js").write_text("window.CCAM_APP_DATA = "+json.dumps(app,ensure_ascii=False)+";\n",encoding="utf-8"); print("OK", app["meta"], "articles", len(articles))
+if __name__ == "__main__": main()
