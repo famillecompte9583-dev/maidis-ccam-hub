@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T00:03:00+02:00
-reason: one-time Gemini review run after GEMINI_API_KEY secret added
+manual update requested at 2026-04-27T00:12:00+02:00
+reason: confirmed Gemini review run after repository secret GEMINI_API_KEY was added
