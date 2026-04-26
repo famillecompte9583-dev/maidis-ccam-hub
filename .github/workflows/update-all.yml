@@ -50,11 +50,7 @@ jobs:
       - name: Générer les vrais dossiers Ameli avec Playwright
         run: python scripts/enrich_articles_playwright.py
 
-      - name: Générer les dossiers blog depuis Ameli en repli léger
-        run: python scripts/enrich_articles.py
-        if: always()
-
-      - name: Garantir des dossiers publics si les crawls sont vides
+      - name: Garantir des dossiers publics si le crawl Playwright est vide
         run: python scripts/ensure_articles.py
 
       - name: Relire les dossiers avec Gemini si disponible
