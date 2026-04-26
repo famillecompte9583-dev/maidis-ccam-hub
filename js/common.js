@@ -33,6 +33,36 @@ function safeExternalUrl(value) {
   }
 }
 
+function sanitizeArticleHTML(html) {
+  const allowedTags = new Set(['A', 'P', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'BR', 'H2', 'H3', 'H4', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'SPAN']);
+  const allowedAttrs = new Set(['href', 'target', 'rel', 'class']);
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+
+  template.content.querySelectorAll('*').forEach(node => {
+    if (!allowedTags.has(node.tagName)) {
+      node.replaceWith(document.createTextNode(node.textContent || ''));
+      return;
+    }
+
+    [...node.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || !allowedAttrs.has(name)) {
+        node.removeAttribute(attr.name);
+        return;
+      }
+      if (name === 'href') node.setAttribute('href', safeExternalUrl(attr.value));
+    });
+
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+
+  return template.innerHTML;
+}
+
 function fmtEuro(value) {
   if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '—';
   return Number(value).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
