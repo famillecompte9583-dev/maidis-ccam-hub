@@ -1,2 +1,2 @@
-manual update requested at 2026-04-26T18:10:00+02:00
-reason: user requested immediate verification because site is stuck at 17:51
+manual update requested at 2026-04-26T20:52:00+02:00
+reason: solution ultime - relance après synchronisation robuste multi-sources, anti-écrasement et statut de diagnostic
