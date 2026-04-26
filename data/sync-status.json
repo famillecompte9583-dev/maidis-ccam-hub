@@ -1,0 +1,36 @@
+{
+  "generated": "2026-04-26T21:01:20+02:00",
+  "timezone": "Europe/Paris",
+  "status": "ok",
+  "sync_mode": "fresh",
+  "total_records": 12494,
+  "message": "Données CCAM fraîches récupérées avec succès.",
+  "report": {
+    "mode": "fresh",
+    "selected_source": {
+      "name": "OpenDataSoft public Healthref CCAM export JSON v2",
+      "url": "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/healthref-france-ccam/exports/json?lang=fr&timezone=Europe%2FParis",
+      "kind": "json",
+      "raw_items": 13495,
+      "valid_records": 12494,
+      "rejected_items": 1001,
+      "duration_seconds": 20.7
+    },
+    "attempts": [
+      {
+        "name": "OpenDataSoft public Healthref CCAM export JSON v2",
+        "url": "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/healthref-france-ccam/exports/json?lang=fr&timezone=Europe%2FParis",
+        "kind": "json",
+        "raw_items": 13495,
+        "valid_records": 12494,
+        "rejected_items": 1001,
+        "duration_seconds": 20.7,
+        "status": "ok"
+      }
+    ],
+    "message": "Données CCAM fraîches récupérées avec succès.",
+    "started_at": "2026-04-26T21:00:19+02:00",
+    "finished_at": "2026-04-26T21:01:20+02:00",
+    "duration_seconds": 60.9
+  }
+}
