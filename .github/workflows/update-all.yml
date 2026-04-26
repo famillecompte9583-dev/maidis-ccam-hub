@@ -8,7 +8,11 @@ on:
       - scripts/update_all.py
       - .github/workflows/update-all.yml
   schedule:
-    - cron: "15 */6 * * *"
+    - cron: "*/15 * * * *"
+
+concurrency:
+  group: annuaire-ccam-update
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -16,6 +20,7 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Récupérer le dépôt
@@ -31,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pdfplumber
 
-      - name: Lancer la mise à jour CCAM
+      - name: Lancer la mise à jour intelligente
         run: python scripts/update_all.py
 
       - name: Vérifier les changements
@@ -42,5 +47,5 @@ jobs:
       - name: Commit automatique si changement
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Mise à jour automatique CCAM, dossiers et changements"
-          file_pattern: data/app-data.json data/app-data.js
+          commit_message: "Synchronisation intelligente CCAM, dossiers et changements"
+          file_pattern: data/app-data.json data/app-data.js data/sync-status.json
