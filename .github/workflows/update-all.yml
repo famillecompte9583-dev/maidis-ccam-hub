@@ -6,9 +6,13 @@ on:
     paths:
       - .github/update-request.txt
       - scripts/update_all.py
+      - scripts/enrich_articles.py
+      - scripts/validate_public_data.py
       - .github/workflows/update-all.yml
   schedule:
-    - cron: "*/5 * * * *"
+    # Deux passages quotidiens suffisent pour une donnée institutionnelle :
+    # fiable, moins bruyant, plus respectueux des sources, moins de commits inutiles.
+    - cron: "17 5,17 * * *"
 
 concurrency:
   group: annuaire-ccam-update
@@ -20,7 +24,7 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Récupérer le dépôt
@@ -36,8 +40,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install pdfplumber
 
-      - name: Lancer la mise à jour intelligente
+      - name: Synchroniser la base CCAM
         run: python scripts/update_all.py
+
+      - name: Générer les dossiers blog depuis Ameli
+        run: python scripts/enrich_articles.py
+
+      - name: Valider les données avant publication
+        run: python scripts/validate_public_data.py
 
       - name: Vérifier les changements
         run: |
@@ -47,5 +57,5 @@ jobs:
       - name: Commit automatique si changement
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Synchronisation intelligente CCAM, dossiers et changements"
+          commit_message: "Synchronisation CCAM validée pour publication"
           file_pattern: data/app-data.json data/app-data.js data/sync-status.json
