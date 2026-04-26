@@ -1,1 +1,26 @@
-document.addEventListener('DOMContentLoaded',()=>{const ch=(window.CCAM_APP_DATA||{}).changes||{};const box=document.getElementById('changesSummary');const table=document.getElementById('changesTable');function n(v){return Number(v||0).toLocaleString('fr-FR')}function esc(s){return String(s??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}if(box){box.innerHTML=[['Ajouts',ch.added_count],['Retraits',ch.removed_count],['Modifications',ch.modified_count]].map(x=>'<section class="card info"><h3>'+x[0]+'</h3><p style="font-size:34px;font-weight:950;margin:0">'+n(x[1])+'</p></section>').join('')}if(table){const rows=[];(ch.added||[]).forEach(r=>rows.push(['Ajout',r.code,r.libelle]));(ch.removed||[]).forEach(r=>rows.push(['Retrait',r.code,r.libelle]));(ch.modified||[]).forEach(r=>rows.push(['Modification',r.code,'Champs modifiés : '+(r.fields||[]).join(', ')]));table.innerHTML=rows.map(r=>'<tr><td><span class="pill p-med">'+esc(r[0])+'</span></td><td class="code">'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join('')||'<tr><td colspan="3" class="small">Aucun changement détecté depuis la génération précédente.</td></tr>'}});
+document.addEventListener('DOMContentLoaded', () => {
+  const changes = appData().changes || {};
+  const box = document.getElementById('changesSummary');
+  const table = document.getElementById('changesTable');
+
+  if (box) {
+    box.innerHTML = [
+      ['Ajouts', changes.added_count],
+      ['Retraits', changes.removed_count],
+      ['Modifications', changes.modified_count],
+    ].map(item => `<section class="card info"><h3>${escHTML(item[0])}</h3><p style="font-size:34px;font-weight:950;margin:0">${fmtInt(item[1])}</p></section>`).join('');
+  }
+
+  if (table) {
+    const rows = [];
+    (Array.isArray(changes.added) ? changes.added : []).forEach(record => rows.push(['Ajout', record.code, record.libelle]));
+    (Array.isArray(changes.removed) ? changes.removed : []).forEach(record => rows.push(['Retrait', record.code, record.libelle]));
+    (Array.isArray(changes.modified) ? changes.modified : []).forEach(record => rows.push(['Modification', record.code, `Champs modifiés : ${(record.fields || []).join(', ')}`]));
+
+    table.innerHTML = rows.map(row => `<tr>
+      <td><span class="pill p-med">${escHTML(row[0])}</span></td>
+      <td class="code">${escHTML(row[1])}</td>
+      <td>${escHTML(row[2])}</td>
+    </tr>`).join('') || '<tr><td colspan="3" class="small">Aucun changement détecté depuis la génération précédente.</td></tr>';
+  }
+});
