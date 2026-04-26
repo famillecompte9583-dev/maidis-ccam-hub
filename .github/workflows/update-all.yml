@@ -7,6 +7,7 @@ on:
       - .github/update-request.txt
       - scripts/update_all.py
       - scripts/enrich_articles.py
+      - scripts/ensure_articles.py
       - scripts/ai_review_articles.py
       - scripts/validate_public_data.py
       - .github/workflows/update-all.yml
@@ -46,6 +47,9 @@ jobs:
 
       - name: Générer les dossiers blog depuis Ameli
         run: python scripts/enrich_articles.py
+
+      - name: Garantir des dossiers publics si le crawl est vide
+        run: python scripts/ensure_articles.py
 
       - name: Relire les dossiers avec Gemini si disponible
         env:
