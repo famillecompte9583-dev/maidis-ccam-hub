@@ -7,6 +7,7 @@ on:
       - .github/update-request.txt
       - scripts/update_all.py
       - scripts/enrich_articles.py
+      - scripts/ai_review_articles.py
       - scripts/validate_public_data.py
       - .github/workflows/update-all.yml
   schedule:
@@ -45,6 +46,13 @@ jobs:
 
       - name: Générer les dossiers blog depuis Ameli
         run: python scripts/enrich_articles.py
+
+      - name: Relire les dossiers avec Gemini si disponible
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash-lite
+          AI_REVIEW_MAX_ARTICLES: "12"
+        run: python scripts/ai_review_articles.py
 
       - name: Valider les données avant publication
         run: python scripts/validate_public_data.py
