@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-26T21:54:38+02:00",
+  "generated": "2026-04-26T22:28:39+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 5.62
+      "duration_seconds": 5.65
     },
     "attempts": [
       {
@@ -24,13 +24,13 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 5.62,
+        "duration_seconds": 5.65,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-26T21:53:51+02:00",
-    "finished_at": "2026-04-26T21:54:38+02:00",
-    "duration_seconds": 47.28
+    "started_at": "2026-04-26T22:27:56+02:00",
+    "finished_at": "2026-04-26T22:28:39+02:00",
+    "duration_seconds": 43.36
   }
 }
