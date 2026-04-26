@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T00:25:00+02:00
-reason: rerun after adding ensure_articles fallback before Gemini review
+manual update requested at 2026-04-27T00:38:00+02:00
+reason: rerun with real Playwright Ameli scraping before Gemini review
