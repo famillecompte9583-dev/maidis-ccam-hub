@@ -1,2 +1,2 @@
-manual update requested at 2026-04-26T23:50:00+02:00
-reason: confirmed one-time workflow run after public hardening merge
+manual update requested at 2026-04-27T00:03:00+02:00
+reason: one-time Gemini review run after GEMINI_API_KEY secret added
