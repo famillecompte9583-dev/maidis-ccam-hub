@@ -1,11 +1,127 @@
-// Chargement dynamique du fichier custom.css si présent.
-(function(){
-    try{
-        const link=document.createElement('link');
-        link.rel='stylesheet';
-        link.href='custom.css';
-        document.head.appendChild(link);
-    }catch(e){/* ignore */}
+// Fonctions communes publiques : sécurité d'affichage, navigation, exports et formats.
+(function () {
+  try {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'custom.css';
+    document.head.appendChild(link);
+  } catch (e) {
+    // Optionnel : le site doit rester fonctionnel sans custom.css.
+  }
 })();
 
-function fmtEuro(v){return v===null||v===undefined||Number.isNaN(Number(v))?'—':Number(v).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});}function clsPanier(p){p=(p||'').toLowerCase();if(p.startsWith('rac 0'))return'p-rac';if(p.startsWith('rac mod'))return'p-mod';if(p.includes('libre')||p.includes('vérifier'))return'p-free';return'p-out'}function qs(k){return new URLSearchParams(location.search).get(k)}function setActive(){const p=document.body.dataset.page;document.querySelectorAll('.links a').forEach(a=>{if(a.dataset.page===p)a.classList.add('active')});const btn=document.querySelector('.menu'),links=document.querySelector('.links');if(btn&&links)btn.onclick=()=>links.classList.toggle('open')}document.addEventListener('DOMContentLoaded',setActive);function downloadText(filename,text,type='text/csv;charset=utf-8'){const blob=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function escHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, match => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[match]));
+}
+
+function escAttr(value) {
+  return escHTML(value).replace(/`/g, '&#096;');
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || ''), window.location.href);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '#';
+  } catch (error) {
+    return '#';
+  }
+}
+
+function sanitizeArticleHTML(html) {
+  const allowedTags = new Set(['A', 'P', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'BR', 'H2', 'H3', 'H4', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'SPAN']);
+  const allowedAttrs = new Set(['href', 'target', 'rel', 'class']);
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+
+  template.content.querySelectorAll('*').forEach(node => {
+    if (!allowedTags.has(node.tagName)) {
+      node.replaceWith(document.createTextNode(node.textContent || ''));
+      return;
+    }
+
+    [...node.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || !allowedAttrs.has(name)) {
+        node.removeAttribute(attr.name);
+        return;
+      }
+      if (name === 'href') node.setAttribute('href', safeExternalUrl(attr.value));
+    });
+
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+
+  return template.innerHTML;
+}
+
+function fmtEuro(value) {
+  if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '—';
+  return Number(value).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+}
+
+function fmtInt(value) {
+  return Number(value || 0).toLocaleString('fr-FR');
+}
+
+function fmtPercent(value) {
+  if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '—';
+  return `${Number(value).toLocaleString('fr-FR')} %`;
+}
+
+function clsPanier(value) {
+  const p = String(value || '').toLowerCase();
+  if (p.startsWith('rac 0')) return 'p-rac';
+  if (p.startsWith('rac mod')) return 'p-mod';
+  if (p.includes('libre') || p.includes('vérifier') || p.includes('verifier')) return 'p-free';
+  return 'p-out';
+}
+
+function qs(key) {
+  return new URLSearchParams(location.search).get(key);
+}
+
+function appData() {
+  return window.CCAM_APP_DATA && typeof window.CCAM_APP_DATA === 'object' ? window.CCAM_APP_DATA : {};
+}
+
+function appRecords() {
+  const records = appData().records;
+  return Array.isArray(records) ? records : [];
+}
+
+function setActive() {
+  const page = document.body.dataset.page;
+  document.querySelectorAll('.links a').forEach(link => {
+    if (link.dataset.page === page) link.classList.add('active');
+  });
+  const btn = document.querySelector('.menu');
+  const links = document.querySelector('.links');
+  if (btn && links) btn.onclick = () => links.classList.toggle('open');
+}
+
+document.addEventListener('DOMContentLoaded', setActive);
+
+function csvCell(value) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+}
+
+function downloadText(filename, text, type = 'text/csv;charset=utf-8') {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
