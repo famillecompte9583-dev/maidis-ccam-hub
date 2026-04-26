@@ -9,6 +9,7 @@ Annuaire statique d’aide à la recherche CCAM, au contrôle de tarifs et au pa
 - Statut de diagnostic : `data/sync-status.json`.
 - Reconstruction CCAM : `scripts/update_all.py`.
 - Enrichissement éditorial Ameli : `scripts/enrich_articles.py`.
+- Relecture IA optionnelle : `scripts/ai_review_articles.py`.
 - Validation avant publication : `scripts/validate_public_data.py`.
 - Workflow GitHub Action : `.github/workflows/update-all.yml`.
 - Petit serveur local optionnel : `server.py`.
@@ -36,7 +37,22 @@ python scripts/validate_public_data.py
 1. Créer ou utiliser le dépôt GitHub `maidis-ccam-hub`.
 2. Aller dans **Settings > Pages**.
 3. Source : `Deploy from a branch`, branche `main`, dossier `/root`.
-4. Le workflow `.github/workflows/update-all.yml` reconstruit la base, génère les dossiers et exécute la validation avant commit.
+4. Le workflow `.github/workflows/update-all.yml` reconstruit la base, génère les dossiers, exécute la relecture IA si une clé est disponible, puis valide avant commit.
+
+## Relecture Gemini optionnelle
+Le site peut utiliser Gemini comme relecteur éditorial contrôlé des dossiers générés automatiquement. Gemini ne remplace pas les sources officielles : il améliore uniquement la clarté, la structure et la mise en page des articles déjà extraits.
+
+Pour l’activer dans GitHub :
+1. Aller dans **Settings > Secrets and variables > Actions**.
+2. Créer un secret nommé `GEMINI_API_KEY`.
+3. Coller la clé API Google AI Studio dans ce secret.
+4. Lancer le workflow manuellement ou attendre le prochain passage planifié.
+
+Paramètres utiles :
+- `GEMINI_MODEL` : modèle utilisé, par défaut `gemini-2.5-flash-lite`.
+- `AI_REVIEW_MAX_ARTICLES` : nombre maximum d’articles relus par passage, par défaut `12`.
+
+Si `GEMINI_API_KEY` est absente, l’étape IA est simplement ignorée et le site continue avec le générateur local.
 
 ## Politique de mise à jour
 La donnée institutionnelle ne nécessite pas un scraping toutes les 5 ou 15 minutes. La cadence recommandée est de deux passages quotidiens, plus un lancement manuel via `workflow_dispatch` en cas de besoin urgent. Cette approche évite les commits artificiels, réduit la charge sur les sources et rend les changements réellement lisibles.
@@ -51,6 +67,7 @@ La donnée institutionnelle ne nécessite pas un scraping toutes les 5 ou 15 min
 - La validation bloque une publication si la base est vide ou trop faible, si les métadonnées sont incohérentes, si des URLs sont invalides ou si un article contient du HTML dangereux.
 - Les rendus JavaScript échappent les champs injectés dans les tableaux, fiches, actualités et changements.
 - Les dossiers générés sont des synthèses pratiques, pas des copies intégrales des sources.
+- La relecture IA est filtrée : HTML autorisé limité, URLs contrôlées, codes CCAM limités aux codes déjà détectés ou présents dans la base.
 
 ## Intégration Maidis
 Le site ne se connecte pas directement à Maidis car le format d'import dépend de votre version et de votre paramétrage. La page **Exports** produit un CSV neutre contenant : code CCAM, activité, phase, libellé, BRSS, taux, montant AMO estimé, panier, domaine et notes.
