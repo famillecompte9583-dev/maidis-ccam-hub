@@ -7,6 +7,7 @@ on:
       - .github/update-request.txt
       - scripts/update_all.py
       - scripts/enrich_articles.py
+      - scripts/enrich_articles_playwright.py
       - scripts/ensure_articles.py
       - scripts/ai_review_articles.py
       - scripts/validate_public_data.py
@@ -26,7 +27,7 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     steps:
       - name: Récupérer le dépôt
@@ -40,15 +41,20 @@ jobs:
       - name: Installer les dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install pdfplumber
+          pip install pdfplumber playwright
+          python -m playwright install --with-deps chromium
 
       - name: Synchroniser la base CCAM
         run: python scripts/update_all.py
 
-      - name: Générer les dossiers blog depuis Ameli
-        run: python scripts/enrich_articles.py
+      - name: Générer les vrais dossiers Ameli avec Playwright
+        run: python scripts/enrich_articles_playwright.py
 
-      - name: Garantir des dossiers publics si le crawl est vide
+      - name: Générer les dossiers blog depuis Ameli en repli léger
+        run: python scripts/enrich_articles.py
+        if: always()
+
+      - name: Garantir des dossiers publics si les crawls sont vides
         run: python scripts/ensure_articles.py
 
       - name: Relire les dossiers avec Gemini si disponible
