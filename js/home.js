@@ -2,10 +2,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const TZ = 'Europe/Paris';
     let currentData = window.CCAM_APP_DATA || {};
 
+    function parseGenerationDate(value) {
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        const raw = String(value).trim();
+        // Les anciennes générations GitHub Actions écrivaient une date ISO sans fuseau
+        // alors qu'elle correspondait à l'heure UTC. On ajoute donc Z pour obtenir
+        // une conversion correcte vers Europe/Paris.
+        const looksIsoWithoutTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw);
+        const normalized = looksIsoWithoutTimezone ? `${raw}Z` : raw;
+        const date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
     function formatParisDateTime(value) {
-        if (!value) return 'non renseignée';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return String(value);
+        const date = parseGenerationDate(value);
+        if (!date) return value ? String(value) : 'non renseignée';
         return date.toLocaleString('fr-FR', {
             timeZone: TZ,
             dateStyle: 'short',
@@ -47,14 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateParisClock() {
-        setText('parisNow', new Date().toLocaleString('fr-FR', {
-            timeZone: TZ,
-            dateStyle: 'short',
-            timeStyle: 'medium'
-        }));
-    }
-
     async function refreshDataFromJson() {
         try {
             const response = await fetch(`data/app-data.json?ts=${Date.now()}`, { cache: 'no-store' });
@@ -70,8 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     render(currentData);
-    updateParisClock();
-    setInterval(updateParisClock, 1000);
     refreshDataFromJson();
     setInterval(refreshDataFromJson, 60000);
 });
