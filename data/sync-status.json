@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-26T23:59:37+02:00",
+  "generated": "2026-04-27T00:08:01+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 34.55
+      "duration_seconds": 48.65
     },
     "attempts": [
       {
@@ -24,25 +24,29 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 34.55,
+        "duration_seconds": 48.65,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-26T23:58:23+02:00",
-    "finished_at": "2026-04-26T23:59:37+02:00",
-    "duration_seconds": 73.79
+    "started_at": "2026-04-27T00:06:32+02:00",
+    "finished_at": "2026-04-27T00:08:01+02:00",
+    "duration_seconds": 88.88
   },
   "articles": {
     "status": "ok",
-    "generated": "2026-04-27T00:00:27+02:00",
-    "count": 0,
-    "mode": "ameli-crawl-blog"
+    "generated": "2026-04-27T00:08:52+02:00",
+    "count": 5,
+    "mode": "curated-fallback",
+    "note": "Dossiers de secours générés car le crawl Ameli n'a produit aucun article exploitable."
   },
   "ai_review": {
-    "status": "skipped",
-    "generated": "2026-04-27T00:00:27+02:00",
-    "reason": "aucun article à relire",
-    "model": "gemini-2.5-flash-lite"
+    "status": "ok",
+    "generated": "2026-04-27T00:09:13+02:00",
+    "provider": "gemini",
+    "model": "gemini-2.5-flash-lite",
+    "attempted_articles": 5,
+    "reviewed_articles": 5,
+    "errors": []
   }
 }
