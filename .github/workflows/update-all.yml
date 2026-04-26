@@ -3,7 +3,7 @@ name: Update CCAM data and watch
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 5 * * *"
+    - cron: "15 */6 * * *"
 
 permissions:
   contents: write
@@ -37,5 +37,5 @@ jobs:
       - name: Commit automatique si changement
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Mise à jour automatique CCAM et veille"
+          commit_message: "Mise à jour automatique CCAM, dossiers et changements"
           file_pattern: data/app-data.json data/app-data.js
