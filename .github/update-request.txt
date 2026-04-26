@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T00:12:00+02:00
-reason: confirmed Gemini review run after repository secret GEMINI_API_KEY was added
+manual update requested at 2026-04-27T00:25:00+02:00
+reason: rerun after adding ensure_articles fallback before Gemini review
