@@ -6,9 +6,10 @@ on:
     paths:
       - .github/update-request.txt
       - scripts/update_all.py
+      - scripts/enrich_articles.py
       - .github/workflows/update-all.yml
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
 
 concurrency:
   group: annuaire-ccam-update
@@ -20,7 +21,7 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Récupérer le dépôt
@@ -36,8 +37,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install pdfplumber
 
-      - name: Lancer la mise à jour intelligente
+      - name: Synchroniser la base CCAM
         run: python scripts/update_all.py
+
+      - name: Générer les dossiers blog depuis Ameli
+        run: python scripts/enrich_articles.py
 
       - name: Vérifier les changements
         run: |
@@ -47,5 +51,5 @@ jobs:
       - name: Commit automatique si changement
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Synchronisation intelligente CCAM, dossiers et changements"
+          commit_message: "Synchronisation CCAM et dossiers Ameli dynamiques"
           file_pattern: data/app-data.json data/app-data.js data/sync-status.json
