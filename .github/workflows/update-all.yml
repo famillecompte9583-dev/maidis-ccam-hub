@@ -2,6 +2,11 @@ name: Update CCAM data and watch
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - .github/update-request.txt
+      - scripts/update_all.py
+      - .github/workflows/update-all.yml
   schedule:
     - cron: "15 */6 * * *"
 
