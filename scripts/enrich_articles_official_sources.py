@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """Veille médicale multi-sources officielles, sans dépendre d'Ameli.fr pro.
 
-Objectif : produire de vrais dossiers publics à partir de sources qui acceptent
-normalement la syndication ou l'accès public automatisé :
-- HAS RSS : recommandations/guides, actualités, bulletin officiel ;
-- Santé publique France RSS ;
-- Vie-publique : assurance maladie / santé publique ;
-- Assurance Maladie institutionnelle : pages actualité accessibles ;
-- DGS-Urgent / ministère : alertes professionnelles lorsque lisibles.
-
-Gemini intervient ensuite pour reformuler densément le texte extrait.
+Règles publiques :
+- uniquement des contenus récents ; par défaut depuis le 1er janvier de N-2 ;
+- tri automatique par date décroissante ;
+- aucune page anti-bot ;
+- aucune fiche technique API dans les dossiers d'actualité.
 """
 from __future__ import annotations
 
 import datetime as dt
 import html
 import json
+import os
 import pathlib
 import re
 import time
@@ -34,74 +31,26 @@ STATUS_PATH = DATA_DIR / "sync-status.json"
 PARIS = ZoneInfo("Europe/Paris")
 
 MAX_ARTICLES = 24
-MAX_PER_SOURCE = 8
+MAX_PER_SOURCE = 10
 SOURCE_TEXT_LIMIT = 36000
 MIN_TEXT_CHARS = 350
+MIN_ARTICLE_YEAR = int(os.environ.get("MIN_ARTICLE_YEAR", str(dt.date.today().year - 2)))
+MIN_ARTICLE_DATE = dt.date(MIN_ARTICLE_YEAR, 1, 1)
 
 RSS_SOURCES = [
-    {
-        "name": "HAS - Recommandations et guides",
-        "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3081452",
-        "category": "HAS",
-        "priority": 1,
-    },
-    {
-        "name": "HAS - Actualités",
-        "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3081656",
-        "category": "HAS",
-        "priority": 2,
-    },
-    {
-        "name": "HAS - Bulletin officiel",
-        "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3113093",
-        "category": "HAS",
-        "priority": 3,
-    },
-    {
-        "name": "Santé publique France - Actualités",
-        "url": "https://www.santepubliquefrance.fr/rss/news/1008",
-        "category": "Santé publique",
-        "priority": 4,
-    },
-    {
-        "name": "Santé publique France - Communiqués",
-        "url": "https://www.santepubliquefrance.fr/rss/press-releases",
-        "category": "Santé publique",
-        "priority": 5,
-    },
-    {
-        "name": "Santé publique France - Avis et recommandations",
-        "url": "https://www.santepubliquefrance.fr/rss/1088",
-        "category": "Santé publique",
-        "priority": 6,
-    },
+    {"name": "HAS - Recommandations et guides", "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3081452", "category": "HAS", "priority": 1},
+    {"name": "HAS - Actualités", "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3081656", "category": "HAS", "priority": 2},
+    {"name": "HAS - Bulletin officiel", "url": "https://www.has-sante.fr/jcms/c_1771214/fr/feed/Rss2.jsp?id=p_3113093", "category": "HAS", "priority": 3},
+    {"name": "Santé publique France - Actualités", "url": "https://www.santepubliquefrance.fr/rss/news/1008", "category": "Santé publique", "priority": 4},
+    {"name": "Santé publique France - Communiqués", "url": "https://www.santepubliquefrance.fr/rss/press-releases", "category": "Santé publique", "priority": 5},
+    {"name": "Santé publique France - Avis et recommandations", "url": "https://www.santepubliquefrance.fr/rss/1088", "category": "Santé publique", "priority": 6},
 ]
 
 HTML_INDEX_SOURCES = [
-    {
-        "name": "Vie-publique - Assurance maladie",
-        "url": "https://www.vie-publique.fr/assurance-maladie",
-        "category": "Assurance maladie",
-        "priority": 7,
-    },
-    {
-        "name": "Vie-publique - Santé publique",
-        "url": "https://www.vie-publique.fr/ressources/mots-cles/sante-publique",
-        "category": "Santé publique",
-        "priority": 8,
-    },
-    {
-        "name": "Assurance Maladie institutionnelle - Actualités",
-        "url": "https://www.assurance-maladie.ameli.fr/actualites",
-        "category": "Assurance maladie",
-        "priority": 9,
-    },
-    {
-        "name": "DGS-Urgent",
-        "url": "https://www.media-emploi.travail.gouv.fr/professionnels/article/dgs-urgent",
-        "category": "Alerte sanitaire",
-        "priority": 10,
-    },
+    {"name": "Vie-publique - Assurance maladie", "url": "https://www.vie-publique.fr/assurance-maladie", "category": "Assurance maladie", "priority": 7},
+    {"name": "Vie-publique - Santé publique", "url": "https://www.vie-publique.fr/ressources/mots-cles/sante-publique", "category": "Santé publique", "priority": 8},
+    {"name": "Assurance Maladie institutionnelle - Actualités", "url": "https://www.assurance-maladie.ameli.fr/actualites", "category": "Assurance maladie", "priority": 9},
+    {"name": "DGS-Urgent", "url": "https://www.media-emploi.travail.gouv.fr/professionnels/article/dgs-urgent", "category": "Alerte sanitaire", "priority": 10},
 ]
 
 TOPIC_KEYWORDS = [
@@ -122,14 +71,19 @@ CATEGORY_RULES = [
     ("Santé publique", ["santé publique", "épidémie", "prévention", "infection", "vaccination"]),
 ]
 
+FRENCH_MONTHS = {
+    "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+    "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11,
+    "décembre": 12, "decembre": 12,
+}
+
 ANTIBOT_RE = re.compile(r"(cloudflare|just a moment|vérification de sécurité|verification de securite|ray id|not a bot|n'est pas un bot|robots malveillants)", re.I)
-UNSAFE_RE = re.compile(r"<\s*(script|iframe|object|embed|link|meta|form|input|button|textarea)\b|\son[a-z]+\s*=|javascript\s*:", re.I)
 CODE_RE = re.compile(r"\b[A-Z]{4}\d{3}\b")
 
 
 class TextExtractor(HTMLParser):
     skip_tags = {"script", "style", "noscript", "svg", "nav", "footer", "header", "aside", "form", "iframe"}
-    block_tags = {"h1", "h2", "h3", "h4", "p", "li", "td", "th", "caption", "summary", "div", "article", "section", "br"}
+    block_tags = {"h1", "h2", "h3", "h4", "p", "li", "td", "th", "caption", "summary", "div", "article", "section", "br", "time"}
 
     def __init__(self) -> None:
         super().__init__()
@@ -147,6 +101,8 @@ class TextExtractor(HTMLParser):
         if tag == "a":
             self.current_href = attrs_dict.get("href")
             self.current_text = []
+        if tag == "time" and attrs_dict.get("datetime"):
+            self.parts.append("\n" + attrs_dict["datetime"] + "\n")
         if tag in {"h1", "h2", "h3", "h4"}:
             self.parts.append("\n## ")
         elif tag == "li":
@@ -199,6 +155,50 @@ def slugify(text: str) -> str:
     return text[:90] or "article"
 
 
+def date_obj(value: str | None) -> dt.date | None:
+    if not value:
+        return None
+    value = str(value).strip()
+    try:
+        parsed = parsedate_to_datetime(value)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.astimezone(PARIS).date()
+    except Exception:
+        pass
+    for pattern in [r"(\d{4})-(\d{1,2})-(\d{1,2})", r"(\d{1,2})/(\d{1,2})/(\d{4})"]:
+        m = re.search(pattern, value)
+        if m:
+            try:
+                if pattern.startswith("(\\d{4})"):
+                    return dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                return dt.date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            except ValueError:
+                pass
+    m = re.search(r"(\d{1,2})\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)\s+(\d{4})", value, re.I)
+    if m:
+        try:
+            return dt.date(int(m.group(3)), FRENCH_MONTHS[m.group(2).lower()], int(m.group(1)))
+        except ValueError:
+            pass
+    return None
+
+
+def extract_date(text: str) -> dt.date | None:
+    candidates: list[dt.date] = []
+    for m in re.finditer(r"\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}/\d{4}\b|\b\d{1,2}\s+(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)\s+\d{4}\b", text or "", re.I):
+        parsed = date_obj(m.group(0))
+        if parsed:
+            candidates.append(parsed)
+    # On prend la date récente la plus plausible. Cela évite de publier un vieux dossier qui mentionne une date récente accessoire.
+    valid = [d for d in candidates if dt.date(2000, 1, 1) <= d <= dt.date.today() + dt.timedelta(days=30)]
+    return max(valid) if valid else None
+
+
+def is_recent(value: dt.date | None) -> bool:
+    return bool(value and value >= MIN_ARTICLE_DATE)
+
+
 def fetch(url: str, timeout: int = 45) -> str:
     req = urllib.request.Request(
         url,
@@ -239,22 +239,6 @@ def reject_bad_content(text: str, label: str) -> None:
         raise ValueError(f"contenu trop court : {label}")
 
 
-def parse_date(value: str | None) -> str:
-    if not value:
-        return dt.date.today().isoformat()
-    try:
-        parsed = parsedate_to_datetime(value)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=dt.timezone.utc)
-        return parsed.astimezone(PARIS).date().isoformat()
-    except Exception:
-        for pattern in [r"(\d{1,2})/(\d{1,2})/(\d{4})", r"(\d{1,2})\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)\s+(\d{4})"]:
-            m = re.search(pattern, value, re.I)
-            if m and len(m.groups()) == 3:
-                pass
-    return dt.date.today().isoformat()
-
-
 def rss_items(source: dict[str, Any]) -> list[dict[str, Any]]:
     raw = fetch(source["url"])
     reject_bad_content(raw, source["name"])
@@ -264,19 +248,19 @@ def rss_items(source: dict[str, Any]) -> list[dict[str, Any]]:
         title = clean_text(item.findtext("title") or "")
         link = clean_text(item.findtext("link") or "")
         desc = clean_text(item.findtext("description") or item.findtext("summary") or "")
-        date = parse_date(item.findtext("pubDate") or item.findtext("date"))
-        if title and link:
-            items.append({"title": title, "url": link, "description": desc, "date": date, "source": source})
-    # Atom fallback
+        pub_date = date_obj(item.findtext("pubDate") or item.findtext("date")) or extract_date(f"{title} {desc}")
+        if title and link and is_recent(pub_date):
+            items.append({"title": title, "url": link, "description": desc, "date": pub_date.isoformat(), "source": source})
     ns = {"atom": "http://www.w3.org/2005/Atom"}
     for entry in root.findall(".//atom:entry", ns):
         title = clean_text(entry.findtext("atom:title", default="", namespaces=ns))
         link_el = entry.find("atom:link", ns)
         link = link_el.attrib.get("href", "") if link_el is not None else ""
         desc = clean_text(entry.findtext("atom:summary", default="", namespaces=ns) or entry.findtext("atom:content", default="", namespaces=ns))
-        date = parse_date(entry.findtext("atom:updated", default="", namespaces=ns))
-        if title and link:
-            items.append({"title": title, "url": link, "description": desc, "date": date, "source": source})
+        pub_date = date_obj(entry.findtext("atom:updated", default="", namespaces=ns)) or extract_date(f"{title} {desc}")
+        if title and link and is_recent(pub_date):
+            items.append({"title": title, "url": link, "description": desc, "date": pub_date.isoformat(), "source": source})
+    items.sort(key=lambda item: item.get("date", ""), reverse=True)
     return items[:MAX_PER_SOURCE]
 
 
@@ -295,7 +279,7 @@ def index_items(source: dict[str, Any]) -> list[dict[str, Any]]:
         if any(skip in href for skip in ["#", "mailto:", "facebook", "twitter", "linkedin"]):
             continue
         seen.add(href)
-        out.append({"title": label[:180], "url": href, "description": "", "date": dt.date.today().isoformat(), "source": source})
+        out.append({"title": label[:180], "url": href, "description": "", "date": None, "source": source})
         if len(out) >= MAX_PER_SOURCE:
             break
     return out
@@ -337,13 +321,13 @@ def paragraphs(text: str) -> list[str]:
     return out
 
 
-def build_html(title: str, url: str, text: str, codes: list[str], source_name: str) -> str:
+def build_html(title: str, url: str, text: str, codes: list[str], source_name: str, article_date: str) -> str:
     parts = paragraphs(text)
     intro = parts[:3]
     detail = parts[3:22]
     code_text = ", ".join(codes[:40]) if codes else "Aucun code CCAM explicite détecté dans le texte source."
     return "".join([
-        f"<p>Ce dossier provient d'une source officielle lisible automatiquement : {esc(source_name)}. Il sera reformulé densément par Gemini à partir du texte extrait.</p>",
+        f"<p>Ce dossier provient d'une source officielle récente : {esc(source_name)}. Date retenue : {esc(article_date)}.</p>",
         "<h2>Contenu extrait</h2>",
         "".join(f"<p>{esc(p)}</p>" for p in intro),
         "<h2>Détails utiles</h2>",
@@ -353,7 +337,7 @@ def build_html(title: str, url: str, text: str, codes: list[str], source_name: s
         "<h2>Codes CCAM explicitement détectés</h2>",
         f"<p>{esc(code_text)}</p>",
         "<h2>Source et traçabilité</h2>",
-        f"<p>Source : <a href=\"{esc(url)}\" target=\"_blank\" rel=\"noopener noreferrer\">{esc(title)}</a>. Texte extrait : {len(text)} caractères. Généré le {esc(now_fr())}.</p>",
+        f"<p>Source : <a href=\"{esc(url)}\" target=\"_blank\" rel=\"noopener noreferrer\">{esc(title)}</a>. Texte extrait : {len(text)} caractères. Généré le {esc(now_fr())}. Les contenus antérieurs au {esc(MIN_ARTICLE_DATE.isoformat())} sont ignorés automatiquement.</p>",
     ])
 
 
@@ -399,6 +383,8 @@ def main() -> None:
     record_codes = {r.get("code") for r in records if isinstance(r, dict) and isinstance(r.get("code"), str)}
     raw_items: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
+    skipped_old = 0
+    skipped_no_date = 0
 
     for source in RSS_SOURCES:
         try:
@@ -415,7 +401,9 @@ def main() -> None:
 
     articles: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
-    for item in sorted(raw_items, key=lambda x: x["source"].get("priority", 99)):
+    # Les items RSS récents passent d'abord, puis les pages HTML dont la date sera vérifiée après extraction.
+    raw_items.sort(key=lambda x: (x.get("date") or "0000-00-00"), reverse=True)
+    for item in raw_items:
         if len(articles) >= MAX_ARTICLES:
             break
         if item["url"] in seen_urls:
@@ -423,8 +411,14 @@ def main() -> None:
         seen_urls.add(item["url"])
         try:
             source = item["source"]
-            text = fetch_detail(item["url"], item.get("description", ""))
-            text = clean_text(text)
+            text = clean_text(fetch_detail(item["url"], item.get("description", "")))
+            article_date_obj = date_obj(item.get("date")) or extract_date(f"{item['title']} {text}")
+            if not article_date_obj:
+                skipped_no_date += 1
+                continue
+            if not is_recent(article_date_obj):
+                skipped_old += 1
+                continue
             if not relevant(item["title"], text, source["category"]):
                 continue
             reject_bad_content(text, item["url"])
@@ -433,55 +427,64 @@ def main() -> None:
             slug = slugify(item["title"])
             if any(a["id"] == slug for a in articles):
                 slug = f"{slug}-{len(articles)+1}"
+            article_date = article_date_obj.isoformat()
             articles.append({
                 "id": slug,
                 "title": item["title"],
-                "date": item.get("date") or dt.date.today().isoformat(),
+                "date": article_date,
                 "source": source["name"],
                 "source_url": item["url"],
                 "category": category,
                 "tag": category,
-                "summary": f"Dossier extrait depuis {source['name']} ({len(text)} caractères), destiné à une reformulation dense par Gemini.",
-                "content_html": build_html(item["title"], item["url"], text, codes, source["name"]),
+                "summary": f"Dossier récent extrait depuis {source['name']} ({len(text)} caractères), destiné à une reformulation dense par Gemini.",
+                "content_html": build_html(item["title"], item["url"], text, codes, source["name"], article_date),
                 "codes": codes[:80],
                 "codes_detectes": codes[:180],
                 "extracted_chars": len(text),
                 "source_text_excerpt": text[:SOURCE_TEXT_LIMIT],
                 "confidence": "Haute" if len(text) > 1800 else "Moyenne",
                 "generation": {
-                    "mode": "official-rss-and-public-html",
+                    "mode": "official-rss-and-public-html-recent-only",
                     "generated": now_fr(),
                     "text_chars": len(text),
-                    "grounding": "official_sources_rss_or_public_html_no_antibot",
+                    "minimum_date": MIN_ARTICLE_DATE.isoformat(),
+                    "grounding": "recent_official_sources_rss_or_public_html_no_antibot",
                 },
             })
             time.sleep(0.3)
         except Exception as exc:
             errors.append({"source": item.get("url", ""), "error": f"{type(exc).__name__}: {exc}"})
 
+    articles.sort(key=lambda item: item.get("date", "0000-00-00"), reverse=True)
     app["articles"] = articles
     app.setdefault("meta", {})["articles"] = len(articles)
     app["meta"]["article_generation"] = {
-        "mode": "official-rss-and-public-html",
+        "mode": "official-rss-and-public-html-recent-only",
         "generated": now_fr(),
+        "minimum_date": MIN_ARTICLE_DATE.isoformat(),
         "sources_attempted": len(RSS_SOURCES) + len(HTML_INDEX_SOURCES),
         "raw_items": len(raw_items),
         "articles_generated": len(articles),
+        "skipped_old": skipped_old,
+        "skipped_no_date": skipped_no_date,
         "errors": errors[:12],
-        "description": "Dossiers générés depuis des sources officielles stables, sans dépendre du scraping Ameli.fr protégé.",
+        "description": "Dossiers récents uniquement, triés par date décroissante, depuis des sources officielles stables.",
     }
     link_articles_to_records(app)
     save_app(app)
     update_status("ok" if articles else "empty", {
         "count": len(articles),
-        "mode": "official-rss-and-public-html",
+        "mode": "official-rss-and-public-html-recent-only",
+        "minimum_date": MIN_ARTICLE_DATE.isoformat(),
         "sources_attempted": len(RSS_SOURCES) + len(HTML_INDEX_SOURCES),
         "raw_items": len(raw_items),
+        "skipped_old": skipped_old,
+        "skipped_no_date": skipped_no_date,
         "total_extracted_chars": sum(int(a.get("extracted_chars", 0)) for a in articles),
         "errors": errors[:12],
-        "message": "Dossiers extraits depuis HAS, Santé publique France, Vie-publique, Assurance Maladie institutionnelle et DGS/ministère lorsque lisibles.",
+        "message": "Dossiers récents triés automatiquement par date décroissante.",
     })
-    print(f"Articles officiels générés : {len(articles)} ; items bruts : {len(raw_items)} ; erreurs : {len(errors)}")
+    print(f"Articles récents générés : {len(articles)} ; ignorés anciens : {skipped_old} ; sans date : {skipped_no_date} ; erreurs : {len(errors)}")
 
 
 if __name__ == "__main__":
