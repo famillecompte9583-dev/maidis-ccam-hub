@@ -88,7 +88,16 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-2.5-flash-lite
           AI_REVIEW_MAX_ARTICLES: "12"
-        run: python scripts/ai_review_articles.py
+          AI_REVIEW_TEMPERATURE: "0.3"
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/ai_review_articles.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('"temperature": 0.1,', '"temperature": float(os.environ.get("AI_REVIEW_TEMPERATURE", "0.3")),')
+          path.write_text(text, encoding='utf-8')
+          PY
+          python scripts/ai_review_articles.py
 
       - name: Valider les données avant publication
         run: python scripts/validate_public_data.py
