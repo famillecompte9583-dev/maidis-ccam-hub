@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T10:32:00+02:00
-reason: rerun with official stable medical sources before Gemini rewrite
+manual update requested at 2026-04-27T10:55:00+02:00
+reason: rerun after full integration of api.gouv data.gouv FHIR Annuaire Santé and MCP sources
