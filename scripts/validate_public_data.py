@@ -5,6 +5,7 @@ Le but n'est pas de certifier médicalement les données, mais d'éviter de publ
 - une base vide ou très incomplète ;
 - des métadonnées incohérentes ;
 - des dossiers générés contenant du HTML dangereux ;
+- des contenus anti-bot / Cloudflare pris par erreur pour des articles ;
 - des actualités avec des URL non publiques.
 """
 from __future__ import annotations
@@ -23,6 +24,7 @@ MIN_RECORDS = 3_000
 MIN_MAIN_RECORDS = 10_000
 CODE_RE = re.compile(r"^[A-Z]{4}\d{3}$")
 UNSAFE_HTML_RE = re.compile(r"<\s*(script|iframe|object|embed|link|meta|form|input|button|textarea)\b|\son[a-z]+\s*=|javascript\s*:", re.I)
+ANTIBOT_RE = re.compile(r"(vérification de sécurité|verification de securite|just a moment|cloudflare|ray id|robots malveillants|n'est pas un bot|not a bot|s'assure que l'utilisateur n'est pas un bot)", re.I)
 ALLOWED_ARTICLE_TAGS = {
     "a", "p", "ul", "ol", "li", "strong", "b", "em", "i", "br", "h2", "h3", "h4",
     "table", "thead", "tbody", "tr", "th", "td", "span",
@@ -47,7 +49,7 @@ def load_json(path: pathlib.Path) -> dict[str, Any]:
         fail(f"Fichier absent ou vide : {path}")
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         fail(f"JSON invalide dans {path}: {exc}")
     if not isinstance(value, dict):
         fail(f"Racine JSON inattendue dans {path}")
@@ -60,6 +62,10 @@ def public_url(value: Any) -> bool:
         return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
     except Exception:
         return False
+
+
+def plain_text_from_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", " ", value or "")
 
 
 def validate_records(app: dict[str, Any]) -> list[dict[str, Any]]:
@@ -120,6 +126,10 @@ def validate_articles(app: dict[str, Any]) -> None:
         if not title:
             fail("Article sans titre")
         html = str(article.get("content_html", ""))
+        source_text = str(article.get("source_text_excerpt", ""))
+        combined = f"{title}\n{plain_text_from_html(html)}\n{source_text}"
+        if ANTIBOT_RE.search(combined):
+            fail(f"Contenu anti-bot publié par erreur : {title}")
         if UNSAFE_HTML_RE.search(html):
             fail(f"HTML dangereux détecté dans l'article : {title}")
         for tag in re.findall(r"</?\s*([a-zA-Z0-9:-]+)", html):
