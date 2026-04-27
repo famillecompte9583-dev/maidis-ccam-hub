@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""Contrôles qualité avant publication publique.
-
-Le but n'est pas de certifier médicalement les données, mais d'éviter de publier :
-- une base vide ou très incomplète ;
-- des métadonnées incohérentes ;
-- des dossiers générés contenant du HTML dangereux ;
-- des contenus anti-bot / Cloudflare pris par erreur pour des articles ;
-- des actualités avec des URL non publiques.
-"""
+"""Contrôles qualité avant publication publique."""
 from __future__ import annotations
 
+import datetime as dt
 import json
+import os
 import pathlib
 import re
 import sys
@@ -22,13 +16,12 @@ DATA = ROOT / "data" / "app-data.json"
 STATUS = ROOT / "data" / "sync-status.json"
 MIN_RECORDS = 3_000
 MIN_MAIN_RECORDS = 10_000
+MIN_ARTICLE_YEAR = int(os.environ.get("MIN_ARTICLE_YEAR", str(dt.date.today().year - 2)))
+MIN_ARTICLE_DATE = dt.date(MIN_ARTICLE_YEAR, 1, 1)
 CODE_RE = re.compile(r"^[A-Z]{4}\d{3}$")
 UNSAFE_HTML_RE = re.compile(r"<\s*(script|iframe|object|embed|link|meta|form|input|button|textarea)\b|\son[a-z]+\s*=|javascript\s*:", re.I)
 ANTIBOT_RE = re.compile(r"(vérification de sécurité|verification de securite|just a moment|cloudflare|ray id|robots malveillants|n'est pas un bot|not a bot|s'assure que l'utilisateur n'est pas un bot)", re.I)
-ALLOWED_ARTICLE_TAGS = {
-    "a", "p", "ul", "ol", "li", "strong", "b", "em", "i", "br", "h2", "h3", "h4",
-    "table", "thead", "tbody", "tr", "th", "td", "span",
-}
+ALLOWED_ARTICLE_TAGS = {"a", "p", "ul", "ol", "li", "strong", "b", "em", "i", "br", "h2", "h3", "h4", "table", "thead", "tbody", "tr", "th", "td", "span"}
 
 
 def fail(message: str) -> None:
@@ -68,6 +61,13 @@ def plain_text_from_html(value: str) -> str:
     return re.sub(r"<[^>]+>", " ", value or "")
 
 
+def parse_iso_date(value: Any) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(value or "")[:10])
+    except Exception:
+        return None
+
+
 def validate_records(app: dict[str, Any]) -> list[dict[str, Any]]:
     records = app.get("records")
     if not isinstance(records, list):
@@ -76,7 +76,6 @@ def validate_records(app: dict[str, Any]) -> list[dict[str, Any]]:
         fail(f"Base trop petite pour publication : {len(records)} actes")
     if len(records) < MIN_MAIN_RECORDS:
         warn(f"Base exploitable mais inhabituellement petite : {len(records)} actes")
-
     bad_codes = []
     missing_labels = 0
     sample = records[:500] + records[-500:]
@@ -119,12 +118,23 @@ def validate_articles(app: dict[str, Any]) -> None:
     articles = app.get("articles", [])
     if not isinstance(articles, list):
         fail("articles doit être une liste")
+    previous_date: dt.date | None = None
     for article in articles:
         if not isinstance(article, dict):
             fail("Chaque article doit être un objet")
         title = str(article.get("title", "")).strip()
         if not title:
             fail("Article sans titre")
+        if article.get("category") == "Sources & API" or article.get("tag") == "Sources & API":
+            fail(f"Fiche Sources & API mélangée aux dossiers d’actualité : {title}")
+        article_date = parse_iso_date(article.get("date"))
+        if not article_date:
+            fail(f"Article sans date ISO exploitable : {title}")
+        if article_date < MIN_ARTICLE_DATE:
+            fail(f"Article trop ancien pour la page Dossiers : {title} ({article_date.isoformat()})")
+        if previous_date and article_date > previous_date:
+            fail(f"Articles non triés par date décroissante autour de : {title}")
+        previous_date = article_date
         html = str(article.get("content_html", ""))
         source_text = str(article.get("source_text_excerpt", ""))
         combined = f"{title}\n{plain_text_from_html(html)}\n{source_text}"
@@ -138,7 +148,7 @@ def validate_articles(app: dict[str, Any]) -> None:
         source_url = article.get("source_url") or article.get("url")
         if source_url and not public_url(source_url):
             fail(f"URL source invalide pour l'article : {title}")
-    ok(f"{len(articles)} article(s) contrôlé(s)")
+    ok(f"{len(articles)} article(s) récent(s), trié(s) et contrôlé(s)")
 
 
 def validate_news(app: dict[str, Any]) -> None:
