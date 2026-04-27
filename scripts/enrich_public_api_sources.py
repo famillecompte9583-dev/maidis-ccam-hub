@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """Intégration des catalogues/API publiques utiles au site.
 
-Ce script complète les dossiers de veille avec des sources techniques fiables :
+Ce script complète le site avec des sources techniques fiables :
 - catalogue open source api.gouv.fr depuis GitHub ;
 - API data.gouv.fr datasets/dataservices ;
 - API FHIR Annuaire Santé et endpoints documentés par l'ANS ;
 - point d'entrée MCP data.gouv.fr pour futures recherches IA.
 
-Il n'utilise pas de scraping anti-bot : uniquement GitHub raw/API, API publiques
-ou endpoints documentés. Les résultats sont ajoutés à app-data.json dans :
-- public_api_sources : catalogue affichable ;
-- articles : dossiers techniques relisibles par Gemini.
+Important : ces fiches vont dans `public_api_sources` et `api_source_articles`,
+pas dans `articles`, afin de ne pas polluer les dossiers d'actualité.
 """
 from __future__ import annotations
 
@@ -48,14 +46,7 @@ DATA_GOUV_DATASETS = "https://www.data.gouv.fr/api/1/datasets/?q={query}&page_si
 DATA_GOUV_DATASERVICES = "https://www.data.gouv.fr/api/1/dataservices/?q={query}&page_size=6"
 MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp"
 FHIR_BASE = "https://gateway.api.esante.gouv.fr/fhir/v2"
-FHIR_ENDPOINTS = [
-    "metadata",
-    "Practitioner",
-    "PractitionerRole",
-    "Organization",
-    "HealthcareService",
-    "Device",
-]
+FHIR_ENDPOINTS = ["metadata", "Practitioner", "PractitionerRole", "Organization", "HealthcareService", "Device"]
 
 KNOWN_PUBLIC_APIS = [
     {
@@ -133,25 +124,13 @@ def update_status(status: str, details: dict[str, Any]) -> None:
 
 
 def fetch_json(url: str, timeout: int = 35) -> Any:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json, application/vnd.github+json, */*;q=0.5",
-            "User-Agent": "maidis-ccam-hub/1.0 (+https://github.com/famillecompte9583-dev/maidis-ccam-hub)",
-        },
-    )
+    req = urllib.request.Request(url, headers={"Accept": "application/json, application/vnd.github+json, */*;q=0.5", "User-Agent": "maidis-ccam-hub/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8", errors="replace"))
 
 
 def fetch_text(url: str, timeout: int = 35) -> str:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "text/plain, text/markdown, text/html, application/json, */*;q=0.5",
-            "User-Agent": "maidis-ccam-hub/1.0 (+https://github.com/famillecompte9583-dev/maidis-ccam-hub)",
-        },
-    )
+    req = urllib.request.Request(url, headers={"Accept": "text/plain, text/markdown, text/html, application/json, */*;q=0.5", "User-Agent": "maidis-ccam-hub/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return response.read().decode("utf-8", errors="replace")
 
@@ -178,10 +157,9 @@ def parse_front_matter(markdown: str) -> dict[str, Any]:
         if ":" not in line or line.startswith(" "):
             continue
         key, value = line.split(":", 1)
-        key = key.strip()
         value = value.strip().strip('"').strip("'")
-        if key and value:
-            data[key] = value
+        if key.strip() and value:
+            data[key.strip()] = value
     return data
 
 
@@ -201,16 +179,13 @@ def api_gouv_catalog() -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
             raise ValueError("réponse GitHub inattendue")
     except Exception as exc:
         return [], [{"source": "api.gouv.fr GitHub contents", "error": f"{type(exc).__name__}: {exc}"}]
-
     for file_info in files[:MAX_API_GOUV_FILES]:
         try:
             name = file_info.get("name", "")
             download_url = file_info.get("download_url", "")
             if not name.endswith(".md") or not download_url:
                 continue
-            quick = f"{name} {download_url}"
-            if not is_health_related(quick):
-                # on évite de télécharger tout le catalogue quand le nom n'a aucun signal santé.
+            if not is_health_related(f"{name} {download_url}"):
                 continue
             raw = fetch_text(download_url)
             if not is_health_related(raw):
@@ -242,22 +217,15 @@ def api_gouv_catalog() -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
 
 
 def data_gouv_search() -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    queries = [
-        "santé remboursement",
-        "CCAM actes médicaux",
-        "médicaments remboursement",
-        "PMSI MCO OpenCCAM",
-        "terminologies de santé",
-        "annuaire santé FHIR",
-    ]
+    queries = ["santé remboursement", "CCAM actes médicaux", "médicaments remboursement", "PMSI MCO OpenCCAM", "terminologies de santé", "annuaire santé FHIR"]
     items: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
     seen: set[str] = set()
     for query in queries:
         encoded = urllib.parse.quote(query)
         for template, kind in [(DATA_GOUV_DATASETS, "dataset"), (DATA_GOUV_DATASERVICES, "dataservice")]:
-            url = template.format(query=encoded)
             try:
+                url = template.format(query=encoded)
                 payload = fetch_json(url)
                 results = payload.get("data", []) if isinstance(payload, dict) else []
                 for item in results:
@@ -267,10 +235,7 @@ def data_gouv_search() -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
                         page = f"https://www.data.gouv.fr/fr/datasets/{item.get('slug')}/" if kind == "dataset" else f"https://www.data.gouv.fr/fr/dataservices/{item.get('slug')}/"
                     description = compact_text(first_non_empty(item.get("description"), item.get("tagline"), item.get("acronym"), ""))[:900]
                     key = page or title
-                    if key in seen:
-                        continue
-                    text = f"{title} {description} {query}"
-                    if not is_health_related(text):
+                    if key in seen or not is_health_related(f"{title} {description} {query}"):
                         continue
                     seen.add(key)
                     items.append({
@@ -299,11 +264,9 @@ def check_url(url: str, expect_json: bool = False) -> tuple[str, str]:
         if expect_json:
             payload = fetch_json(url, timeout=20)
             if isinstance(payload, dict):
-                label = first_non_empty(payload.get("resourceType"), payload.get("software", {}).get("name") if isinstance(payload.get("software"), dict) else "", "json ok")
-                return "ok", label
+                return "ok", first_non_empty(payload.get("resourceType"), "json ok")
             return "ok", "json reçu"
-        text = fetch_text(url, timeout=20)
-        return "ok", compact_text(text[:240])
+        return "ok", compact_text(fetch_text(url, timeout=20)[:240])
     except Exception as exc:
         return "warning", f"{type(exc).__name__}: {exc}"
 
@@ -325,83 +288,6 @@ def known_sources_with_status() -> list[dict[str, Any]]:
     return out
 
 
-def source_to_html(source: dict[str, Any]) -> str:
-    endpoints = source.get("endpoints") or []
-    endpoint_html = ""
-    if endpoints:
-        endpoint_html = "<h2>Endpoints contrôlés</h2><ul>" + "".join(
-            f"<li><strong>{esc(ep.get('name'))}</strong> — {esc(ep.get('status'))} — <a href=\"{esc(ep.get('url'))}\" target=\"_blank\" rel=\"noopener noreferrer\">endpoint</a></li>"
-            for ep in endpoints
-        ) + "</ul>"
-    return "".join([
-        f"<p>Cette fiche source est générée automatiquement pour documenter une API ou un catalogue exploitable par l'annuaire.</p>",
-        "<h2>Utilité pour le site</h2>",
-        f"<p>{esc(source.get('use_case') or source.get('summary') or '')}</p>",
-        "<h2>Source et accès</h2>",
-        "<ul>",
-        f"<li><strong>Fournisseur :</strong> {esc(source.get('provider'))}</li>",
-        f"<li><strong>Catégorie :</strong> {esc(source.get('category'))}</li>",
-        f"<li><strong>Accès :</strong> {esc(source.get('access') or 'à vérifier dans la documentation officielle')}</li>",
-        f"<li><strong>État de contrôle :</strong> {esc(source.get('live_status') or 'non contrôlé')} {esc(source.get('live_detail') or '')}</li>",
-        "</ul>",
-        endpoint_html,
-        "<h2>Liens utiles</h2>",
-        "<ul>",
-        f"<li><a href=\"{esc(source.get('url'))}\" target=\"_blank\" rel=\"noopener noreferrer\">Page source</a></li>",
-        f"<li><a href=\"{esc(source.get('doc_url') or source.get('url'))}\" target=\"_blank\" rel=\"noopener noreferrer\">Documentation</a></li>",
-        f"<li><a href=\"{esc(source.get('api_url') or source.get('url'))}\" target=\"_blank\" rel=\"noopener noreferrer\">Endpoint ou référence technique</a></li>",
-        "</ul>",
-    ])
-
-
-def make_articles_from_sources(sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    articles = []
-    for source in sources[:18]:
-        title = source.get("title") or "Source API publique"
-        source_text = "\n".join([
-            f"Titre : {title}",
-            f"Fournisseur : {source.get('provider', '')}",
-            f"Catégorie : {source.get('category', '')}",
-            f"Résumé : {source.get('summary', '')}",
-            f"Cas d'usage : {source.get('use_case', '')}",
-            f"Accès : {source.get('access', '')}",
-            f"URL : {source.get('url', '')}",
-            f"Documentation : {source.get('doc_url', '')}",
-            f"Endpoint : {source.get('api_url', '')}",
-            f"État : {source.get('live_status', '')} {source.get('live_detail', '')}",
-            source.get("source_text_excerpt", ""),
-        ])[:SOURCE_TEXT_LIMIT]
-        articles.append({
-            "id": "source-" + slugify(title),
-            "title": title,
-            "date": dt.date.today().isoformat(),
-            "source": source.get("provider") or "Source API publique",
-            "source_url": source.get("url") or source.get("doc_url") or source.get("api_url"),
-            "category": "Sources & API",
-            "tag": "Sources & API",
-            "summary": source.get("summary") or "Source technique détectée pour enrichir la veille et les dossiers du site.",
-            "content_html": source_to_html(source),
-            "codes": [],
-            "codes_detectes": [],
-            "extracted_chars": len(source_text),
-            "source_text_excerpt": source_text,
-            "confidence": "Haute" if source.get("live_status") == "ok" else "Moyenne",
-            "generation": {
-                "mode": "public-api-catalog-integration",
-                "generated": now_fr(),
-                "grounding": "api_gouv_github_data_gouv_rest_ans_fhir_mcp_metadata",
-            },
-        })
-    return articles
-
-
-def merge_articles(existing: list[dict[str, Any]], additions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    by_id = {article.get("id"): article for article in existing if isinstance(article, dict) and article.get("id")}
-    for article in additions:
-        by_id[article["id"]] = article
-    return list(by_id.values())
-
-
 def main() -> None:
     app = load_app()
     known = known_sources_with_status()
@@ -417,8 +303,7 @@ def main() -> None:
         sources.append(source)
 
     app["public_api_sources"] = sources
-    api_articles = make_articles_from_sources(sources)
-    app["articles"] = merge_articles(app.get("articles", []), api_articles)
+    app["api_source_articles"] = []
     app.setdefault("meta", {})["public_api_sources"] = {
         "generated": now_fr(),
         "total": len(sources),
@@ -426,6 +311,7 @@ def main() -> None:
         "api_gouv": len(api_gouv),
         "data_gouv": len(data_gouv),
         "errors": (api_errors + data_errors)[:12],
+        "note": "Ces sources sont affichées dans sources.html et ne sont pas mélangées aux dossiers d’actualité.",
     }
     save_app(app)
     update_status("ok" if sources else "empty", {
@@ -433,11 +319,11 @@ def main() -> None:
         "known": len(known),
         "api_gouv": len(api_gouv),
         "data_gouv": len(data_gouv),
-        "articles_added": len(api_articles),
+        "articles_added": 0,
         "errors": (api_errors + data_errors)[:12],
-        "message": "Catalogue public API/sources intégré : api.gouv.fr, data.gouv.fr, FHIR Annuaire Santé et MCP data.gouv.",
+        "message": "Catalogue public API/sources intégré dans public_api_sources uniquement.",
     })
-    print(f"Sources API publiques intégrées : {len(sources)} ; articles ajoutés : {len(api_articles)}")
+    print(f"Sources API publiques intégrées : {len(sources)} ; aucun article dossier ajouté")
 
 
 if __name__ == "__main__":
