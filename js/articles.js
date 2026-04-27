@@ -1,6 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
   const app = appData();
-  const articles = Array.isArray(app.articles) ? app.articles : [];
+  const rawArticles = Array.isArray(app.articles) ? app.articles : [];
+  const articles = rawArticles
+    .filter(article => article && article.category !== 'Sources & API' && article.tag !== 'Sources & API')
+    .sort((a, b) => {
+      const da = Date.parse(a.date || '1900-01-01') || 0;
+      const db = Date.parse(b.date || '1900-01-01') || 0;
+      return db - da;
+    });
   const list = document.getElementById('articles');
   const body = document.getElementById('articleBody');
 
@@ -11,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (list) {
     if (!articles.length) {
-      list.innerHTML = '<div class="note">Aucun vrai dossier n’a encore été extrait. Les dossiers ne sont plus générés artificiellement : ils apparaîtront uniquement après extraction réelle des sources Ameli par Playwright, puis relecture éventuelle par Gemini.</div>';
+      list.innerHTML = '<div class="note">Aucun dossier récent n’a encore été extrait. Les contenus anciens et les fiches techniques API sont exclus de cette page ; les sources techniques sont disponibles dans Sources & API.</div>';
       return;
     }
 
@@ -33,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = new URLSearchParams(location.search).get('id');
     const article = articles.find(item => item.id === id) || articles[0];
     if (!article) {
-      body.innerHTML = '<div class="note">Dossier introuvable. Aucun vrai article extrait n’est actuellement publié.</div>';
+      body.innerHTML = '<div class="note">Dossier introuvable. Aucun article récent n’est actuellement publié.</div>';
       return;
     }
 
