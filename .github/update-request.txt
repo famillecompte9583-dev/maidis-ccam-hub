@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T09:35:00+02:00
-reason: rerun with Jina Reader extraction before dense Gemini rewrite
+manual update requested at 2026-04-27T10:08:00+02:00
+reason: rerun after rejecting antibot pages and using Ameli static mirror first
