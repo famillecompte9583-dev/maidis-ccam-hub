@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T10:08:00+02:00
-reason: rerun after rejecting antibot pages and using Ameli static mirror first
+manual update requested at 2026-04-27T10:32:00+02:00
+reason: rerun with official stable medical sources before Gemini rewrite
