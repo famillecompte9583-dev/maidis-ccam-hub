@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 """Relecture éditoriale optionnelle des dossiers via Gemini.
 
-Ce script s'exécute après scripts/enrich_articles.py.
-Il ne fait rien si GEMINI_API_KEY est absente : le site garde alors les dossiers
-produits par le générateur local.
-
-Objectif : utiliser Gemini comme relecteur/mise en page, pas comme source de vérité.
-L'IA reçoit uniquement le contenu déjà extrait et doit renvoyer un JSON strict.
+Gemini sert uniquement à relire et structurer les contenus réellement extraits.
+Il ne doit pas inventer de dossier, de règle métier ou de code CCAM.
 """
 from __future__ import annotations
 
@@ -98,7 +94,7 @@ def sanitize_html_fragment(fragment: str) -> str:
     fragment = str(fragment or "")
     if UNSAFE_RE.search(fragment):
         fragment = UNSAFE_RE.sub(" ", fragment)
-    # Supprime les balises non prévues tout en conservant leur texte.
+
     def repl(match: re.Match[str]) -> str:
         slash, tag, attrs = match.group(1), match.group(2).lower(), match.group(3) or ""
         if tag not in SAFE_TAGS:
@@ -118,13 +114,16 @@ def sanitize_html_fragment(fragment: str) -> str:
 
 
 def allowed_codes(article: dict[str, Any], record_codes: set[str]) -> set[str]:
+    # Strict : uniquement les codes déjà détectés par le scraper dans la page source.
+    detected = {code for code in article.get("codes_detectes", []) if isinstance(code, str)}
     known = {code for code in article.get("codes", []) if isinstance(code, str)}
-    detected = set(CODE_RE.findall(plain_text_from_html(article.get("content_html", ""))))
-    return (known | detected) & record_codes
+    return (detected | known) & record_codes
 
 
 def compact_article(article: dict[str, Any]) -> dict[str, Any]:
-    text = plain_text_from_html(article.get("content_html", ""))
+    source_text = str(article.get("source_text_excerpt") or "").strip()
+    if not source_text:
+        source_text = plain_text_from_html(article.get("content_html", ""))
     return {
         "id": article.get("id"),
         "title": article.get("title"),
@@ -132,34 +131,37 @@ def compact_article(article: dict[str, Any]) -> dict[str, Any]:
         "summary": article.get("summary"),
         "source": article.get("source"),
         "source_url": article.get("source_url") or article.get("url"),
-        "codes": article.get("codes", [])[:80],
-        "extracted_text": text[:9000],
+        "codes_detectes": article.get("codes_detectes", [])[:80],
+        "source_text_reel": source_text[:12000],
+        "generation": article.get("generation"),
     }
 
 
 def build_prompt(article: dict[str, Any], allowed: set[str]) -> str:
-    allowed_codes_text = ", ".join(sorted(allowed)[:140]) or "aucun"
+    allowed_codes_text = ", ".join(sorted(allowed)[:120]) or "aucun"
     payload = compact_article(article)
     return f"""
 Tu es relecteur éditorial pour un site public français d'aide à la lecture CCAM.
-Tu dois améliorer la clarté, la mise en page et la prudence métier d'un article généré automatiquement.
+Tu dois créer une fiche claire à partir du texte réel extrait d'une page Ameli publique.
 
 Règles strictes :
-- Ne crée aucune information nouvelle.
+- Base-toi uniquement sur le champ source_text_reel.
+- Ne crée aucune information absente du texte source.
 - Ne donne pas de conseil médical individuel.
 - Ne présente jamais les montants/taux comme une vérité opposable.
 - La source officielle reste prioritaire.
 - N'utilise que ces balises HTML : <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <br>, <a>.
 - Pas de script, iframe, style inline, attribut on*, javascript:, tableau complexe ou image.
-- Les codes CCAM renvoyés doivent appartenir exclusivement à cette liste autorisée : {allowed_codes_text}.
+- Les codes CCAM renvoyés doivent appartenir exclusivement à cette liste explicitement détectée : {allowed_codes_text}.
+- Si aucun code n'est autorisé, renvoie codes: [] ; n'invente jamais de code.
 - Réponds uniquement avec un JSON valide, sans markdown.
 
 Schéma attendu :
 {{
-  "title": "titre clair, sobre, sans promesse excessive",
-  "summary": "résumé public en 1 à 2 phrases",
+  "title": "titre clair et fidèle à la source",
+  "summary": "résumé public en 1 à 2 phrases, fidèle au texte source",
   "category": "CCAM|Tarifs|Dentaire|100 % Santé|Convention|Dossier",
-  "content_html": "HTML court, structuré, prudent, avec source officielle prioritaire",
+  "content_html": "HTML structuré et sourcé, sans ajout non présent dans la source",
   "codes": ["codes CCAM autorisés uniquement"],
   "confidence": "Haute|Moyenne|Basse"
 }}
@@ -174,8 +176,8 @@ def call_gemini(prompt: str, api_key: str) -> dict[str, Any]:
     body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.2,
-            "topP": 0.8,
+            "temperature": 0.15,
+            "topP": 0.7,
             "maxOutputTokens": 4096,
             "responseMimeType": "application/json",
         },
@@ -183,10 +185,7 @@ def call_gemini(prompt: str, api_key: str) -> dict[str, Any]:
     req = urllib.request.Request(
         endpoint,
         data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key,
-        },
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as response:
@@ -227,13 +226,13 @@ def normalize_ai_result(result: dict[str, Any], original: dict[str, Any], allowe
         "category": category,
         "tag": category,
         "content_html": content_html,
-        "codes": codes or [code for code in original.get("codes", []) if code in allowed][:120],
+        "codes": codes,
         "confidence": confidence,
         "ai_review": {
             "provider": "gemini",
             "model": MODEL,
             "reviewed_at": now_fr(),
-            "mode": "editorial_review_only",
+            "mode": "grounded_editorial_review_only",
         },
     }
 
@@ -249,7 +248,7 @@ def main() -> None:
     articles = app.get("articles", [])
     records = app.get("records", [])
     if not isinstance(articles, list) or not articles:
-        update_status("skipped", {"reason": "aucun article à relire", "model": MODEL})
+        update_status("skipped", {"reason": "aucun article réel à relire", "model": MODEL})
         print("Gemini désactivé : aucun article.")
         return
     record_codes = {r.get("code") for r in records if isinstance(r, dict) and isinstance(r.get("code"), str)}
@@ -272,7 +271,7 @@ def main() -> None:
             errors.append({"title": article.get("title"), "error": f"HTTP {exc.code}: {body}"})
             reviewed.append(article)
             print(f"Gemini ignoré pour un article : HTTP {exc.code}", file=sys.stderr)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append({"title": article.get("title"), "error": f"{type(exc).__name__}: {exc}"})
             reviewed.append(article)
             print(f"Gemini ignoré pour un article : {exc}", file=sys.stderr)
