@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T12:51:08+02:00",
+  "generated": "2026-04-27T13:00:57+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 4.81
+      "duration_seconds": 5.14
     },
     "attempts": [
       {
@@ -24,23 +24,26 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 4.81,
+        "duration_seconds": 5.14,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-27T12:50:21+02:00",
-    "finished_at": "2026-04-27T12:51:08+02:00",
-    "duration_seconds": 47.27
+    "started_at": "2026-04-27T13:00:12+02:00",
+    "finished_at": "2026-04-27T13:00:57+02:00",
+    "duration_seconds": 44.4
   },
   "articles": {
     "status": "ok",
-    "generated": "2026-04-27T12:52:37+02:00",
-    "count": 24,
-    "mode": "official-rss-and-public-html",
+    "generated": "2026-04-27T13:02:18+02:00",
+    "count": 20,
+    "mode": "official-rss-and-public-html-recent-only",
+    "minimum_date": "2024-01-01",
     "sources_attempted": 10,
-    "raw_items": 24,
-    "total_extracted_chars": 182519,
+    "raw_items": 20,
+    "skipped_old": 0,
+    "skipped_no_date": 0,
+    "total_extracted_chars": 102156,
     "errors": [
       {
         "source": "HAS - Recommandations et guides",
@@ -71,48 +74,64 @@
         "error": "URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.media-emploi.travail.gouv.fr'. (_ssl.c:1016)>"
       }
     ],
-    "message": "Dossiers extraits depuis HAS, Santé publique France, Vie-publique, Assurance Maladie institutionnelle et DGS/ministère lorsque lisibles."
+    "message": "Dossiers récents triés automatiquement par date décroissante."
   },
   "public_api_sources": {
     "status": "ok",
-    "generated": "2026-04-27T12:52:55+02:00",
+    "generated": "2026-04-27T13:02:37+02:00",
     "total": 10,
     "known": 3,
     "api_gouv": 5,
     "data_gouv": 2,
-    "articles_added": 10,
+    "articles_added": 0,
     "errors": [],
-    "message": "Catalogue public API/sources intégré : api.gouv.fr, data.gouv.fr, FHIR Annuaire Santé et MCP data.gouv."
+    "message": "Catalogue public API/sources intégré dans public_api_sources uniquement."
   },
   "articles_guard": {
     "status": "ok",
-    "generated": "2026-04-27T12:52:56+02:00",
-    "count": 32,
+    "generated": "2026-04-27T13:02:37+02:00",
+    "count": 20,
     "message": "Vrais articles présents ; aucun fallback publié."
   },
   "ai_review": {
     "status": "partial",
-    "generated": "2026-04-27T12:53:44+02:00",
+    "generated": "2026-04-27T13:02:43+02:00",
     "provider": "gemini",
     "model": "gemini-2.5-flash-lite",
     "attempted_articles": 12,
-    "reviewed_articles": 8,
+    "reviewed_articles": 1,
     "errors": [
       {
-        "title": "Appel à candidatures pour élargir les compétences du Conseil scientifique destiné à l’Observatoire de la santé des riverains du projet de centre de stockage de Bure (Osarib) et à l’étude sur l’état de santé et la santé perçue des populations riveraines de",
-        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 30.58361912s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n "
+        "title": "Enquête « Rapport au sexe » (ERAS) 2026 à destination des hommes ayant des rapports sexuels avec des hommes",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 22.297001663s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
       },
       {
-        "title": "Communiqué de presse - Semaine européenne de la vaccination 2026 : protéger les jeunes grâce à la vaccination, un enjeu de santé publique majeur",
-        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 20.519749261s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+        "title": "Appel à candidatures pour les experts du Comité d’évaluation des registres (CER)",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 18.186416188s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
       },
       {
-        "title": "3ème édition #MoisSansTabac. Bien se préparer pour augmenter ses chances de succès.",
-        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 15.886777614s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+        "title": "État des lieux et propositions d’évolution des dispositifs de surveillance et de prévention de Santé publique France dans le cadre de la mise en place du futur plan national de préparation et de gestion des températures extrêmes",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 18.050015266s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
       },
       {
-        "title": "À chaque âge et en tout lieu, les noyades restent un danger : adoptez les bons comportements !",
-        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 15.768099126s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+        "title": "Analyse de l’impact épidémiologique de différentes stratégies de vaccination sur l’incidence de la tuberculose pédiatrique : arguments en faveur d’une possible évolution de la stratégie actuelle de vaccination par le BCG en France hexagonale",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 17.905386141s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "Avis de Santé publique France relatif aux études menées dans la vallée de l’Orbiel, à la suite de l’avis du comité d’experts Santé Environnement Travail",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 17.779312338s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "Appel à candidatures complémentaire pour la surveillance nationale des expositions des patients atteints de mésothéliome pleural en inter région nord",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 17.658537687s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "Comité d’experts Santé Environnement Travail. Relevé de décisions du comité du 4 avril 2025",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 17.443159964s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "Comité d’experts Santé Environnement Travail. Relevé de décisions du comité du 5 décembre 2024",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 17.299276697s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
       }
     ]
   }
