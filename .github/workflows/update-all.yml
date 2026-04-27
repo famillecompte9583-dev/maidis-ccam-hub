@@ -6,6 +6,7 @@ on:
     paths:
       - .github/update-request.txt
       - scripts/update_all.py
+      - scripts/enrich_articles_official_sources.py
       - scripts/enrich_articles_jina.py
       - scripts/enrich_articles_playwright.py
       - scripts/ensure_articles.py
@@ -47,19 +48,25 @@ jobs:
       - name: Synchroniser la base CCAM
         run: python scripts/update_all.py
 
-      - name: Extraire les dossiers Ameli via Jina Reader
-        run: python scripts/enrich_articles_jina.py
+      - name: Extraire les dossiers depuis sources officielles stables
+        run: python scripts/enrich_articles_official_sources.py
 
-      - name: Tenter Playwright si Jina ne produit rien
+      - name: Tenter Ameli/Jina/Playwright seulement si aucune source stable ne produit d'article
         run: |
           python - <<'PY'
           import json, pathlib, subprocess, sys
           path = pathlib.Path('data/app-data.json')
           data = json.loads(path.read_text(encoding='utf-8'))
           if data.get('articles'):
-              print(f"Jina a déjà produit {len(data['articles'])} article(s), Playwright ignoré.")
+              print(f"Sources officielles stables : {len(data['articles'])} article(s), Ameli protégé ignoré.")
           else:
-              subprocess.check_call([sys.executable, 'scripts/enrich_articles_playwright.py'])
+              try:
+                  subprocess.check_call([sys.executable, 'scripts/enrich_articles_jina.py'])
+              except Exception as exc:
+                  print(f"Jina ignoré : {exc}")
+              data = json.loads(path.read_text(encoding='utf-8'))
+              if not data.get('articles'):
+                  subprocess.check_call([sys.executable, 'scripts/enrich_articles_playwright.py'])
           PY
 
       - name: Garder le site honnête si aucune source ne donne d'article
