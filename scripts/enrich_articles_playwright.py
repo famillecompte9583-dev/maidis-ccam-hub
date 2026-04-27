@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Génération de vrais dossiers Ameli via Playwright.
 
-Pourquoi ce script existe :
-- urllib peut recevoir une page incomplète, filtrée ou trop dépendante du JS ;
-- Playwright rend la page comme un navigateur Chromium headless ;
-- on extrait ensuite le texte visible et les liens utiles ;
-- Gemini peut relire de vrais contenus au lieu d'un dossier de secours.
+Pipeline voulu :
+1. Playwright rend des pages Ameli publiques comme un navigateur.
+2. Le script extrait le texte visible réel.
+3. Les dossiers sont construits uniquement à partir de ce texte.
+4. Gemini peut ensuite relire ce contenu réel.
 
-Le script reste prudent : il ne contourne pas d'authentification, ne force pas de zone
-privée et se limite aux pages publiques Ameli ciblées.
+Règle stricte : aucun code CCAM n'est associé par remplissage artificiel.
+Seuls les codes explicitement détectés dans le texte source rendu peuvent être liés.
 """
 from __future__ import annotations
 
@@ -29,9 +29,10 @@ APP_PATH = DATA_DIR / "app-data.json"
 STATUS_PATH = DATA_DIR / "sync-status.json"
 PARIS = ZoneInfo("Europe/Paris")
 
-MAX_PAGES = 20
-MAX_ARTICLES = 14
+MAX_PAGES = 24
+MAX_ARTICLES = 16
 MIN_TEXT_CHARS = 450
+SOURCE_TEXT_LIMIT = 14000
 
 SEEDS = [
     "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/nomenclatures-codage/codage-actes-medicaux-ccam",
@@ -64,6 +65,7 @@ NOISE_PATTERNS = [
     r"Fil d'Ariane",
     r"Partager cette page",
     r"Retour en haut de page",
+    r"Fermer",
 ]
 
 
@@ -122,17 +124,16 @@ def clean_text(text: str) -> str:
     for pattern in NOISE_PATTERNS:
         text = re.sub(pattern, " ", text, flags=re.I)
     text = re.sub(r"\s+", " ", text).strip()
-    # Certaines pages répètent beaucoup de menus. On coupe avant des blocs de pied de page typiques.
     text = re.split(r"(?:Mentions légales|Accessibilité|Plan du site|Contacts|Nous contacter)", text, flags=re.I)[0].strip()
     return text
 
 
-def sentence_candidates(text: str, limit: int = 7) -> list[str]:
+def sentence_candidates(text: str, limit: int = 8) -> list[str]:
     sentences: list[str] = []
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         s = re.sub(r"\s+", " ", sentence).strip()
         low = s.lower()
-        if 70 <= len(s) <= 380 and any(keyword.replace("-", " ") in low for keyword in TOPIC_KEYWORDS):
+        if 70 <= len(s) <= 420 and any(keyword.replace("-", " ") in low for keyword in TOPIC_KEYWORDS):
             sentences.append(s)
         if len(sentences) >= limit:
             break
@@ -158,60 +159,36 @@ def slugify(text: str) -> str:
     return text[:90] or "article"
 
 
-def select_fallback_codes(records: list[dict[str, Any]], category: str, existing: set[str], limit: int = 80) -> list[str]:
-    if existing:
-        return sorted(existing)[:limit]
-    out: list[str] = []
-    for record in records:
-        if not isinstance(record, dict):
-            continue
-        code = record.get("code")
-        if not isinstance(code, str) or code in out:
-            continue
-        domaine = str(record.get("domaine", ""))
-        panier = str(record.get("panier_100_sante", ""))
-        if category == "100 % Santé" and panier.startswith(("RAC 0", "RAC mod")):
-            out.append(code)
-        elif category in {"Tarifs", "Dentaire", "Convention"} and domaine != "Médical CCAM":
-            out.append(code)
-        elif category == "CCAM" and domaine == "Médical CCAM":
-            out.append(code)
-        if len(out) >= limit:
-            break
-    return out
+def build_summary(category: str, detected_code_count: int) -> str:
+    base = {
+        "100 % Santé": "Synthèse issue d'une page Ameli rendue par navigateur sur les paniers 100 % Santé et les contrôles associés.",
+        "Tarifs": "Synthèse issue d'une page Ameli rendue par navigateur sur les tarifs conventionnels, la BRSS et les points de contrôle.",
+        "Convention": "Synthèse issue d'une page Ameli rendue par navigateur sur les repères conventionnels utiles au suivi des actes.",
+        "Dentaire": "Synthèse issue d'une page Ameli rendue par navigateur sur les actes bucco-dentaires et les points de vigilance.",
+        "CCAM": "Synthèse issue d'une page Ameli rendue par navigateur sur le codage CCAM et la lecture des actes.",
+    }.get(category, "Synthèse issue d'une page Ameli rendue par navigateur.")
+    if detected_code_count:
+        return f"{base} {detected_code_count} code(s) CCAM ont été détecté(s) explicitement dans le texte source."
+    return f"{base} Aucun code CCAM explicite n'a été détecté dans le texte source."
 
 
-def build_summary(category: str, codes: list[str]) -> str:
-    if category == "100 % Santé":
-        return "Synthèse issue d'une page Ameli rendue par navigateur sur les paniers 100 % Santé, les actes associés et les contrôles à effectuer."
-    if category == "Tarifs":
-        return "Synthèse issue d'une page Ameli rendue par navigateur sur les tarifs conventionnels, la BRSS et les points de contrôle avant facturation."
-    if category == "Convention":
-        return "Synthèse issue d'une page Ameli rendue par navigateur sur les repères conventionnels utiles au suivi des actes."
-    if category == "Dentaire":
-        return "Synthèse issue d'une page Ameli rendue par navigateur sur les actes bucco-dentaires et les points de vigilance de prise en charge."
-    if codes:
-        return f"Synthèse issue d'une page Ameli rendue par navigateur, reliée à {len(codes)} code(s) CCAM détecté(s) ou associés."
-    return "Synthèse issue d'une page Ameli rendue par navigateur pour faciliter la lecture publique des informations suivies."
-
-
-def build_html(title: str, url: str, category: str, text: str, sentences: list[str], codes: list[str], chars: int) -> str:
+def build_html(title: str, url: str, text: str, sentences: list[str], detected_codes: list[str], chars: int) -> str:
     if not sentences:
         sentences = [
-            "La page officielle a été rendue par navigateur puis synthétisée pour faciliter la lecture dans l'annuaire.",
+            "La page officielle a été rendue par navigateur puis nettoyée pour faciliter la lecture dans l'annuaire.",
             "Les informations doivent être contrôlées avec la source officielle, la base CCAM et le contexte patient réel.",
             "L'annuaire sert d'aide à la recherche et au paramétrage, sans remplacer les textes opposables.",
         ]
-    code_text = ", ".join(codes[:80]) if codes else "Aucun code CCAM explicite n'a été détecté dans le texte rendu."
+    code_text = ", ".join(detected_codes[:40]) if detected_codes else "Aucun code CCAM explicite n'a été détecté dans le texte rendu."
     return "".join([
-        "<p>Ce dossier est produit à partir d'une page Ameli publique rendue avec Playwright, puis nettoyée et structurée pour une lecture pratique.</p>",
-        "<h2>Ce qu'il faut retenir</h2>",
+        "<p>Ce dossier est produit à partir d'une page Ameli publique rendue avec Playwright. Le contenu ci-dessous provient du texte réellement extrait de la source, puis structuré pour faciliter la lecture.</p>",
+        "<h2>Informations extraites</h2>",
         "<ul>",
-        "".join(f"<li>{esc(sentence)}</li>" for sentence in sentences[:6]),
+        "".join(f"<li>{esc(sentence)}</li>" for sentence in sentences[:8]),
         "</ul>",
         "<h2>Lecture métier</h2>",
         "<p>Ces éléments aident à contrôler un acte, un tarif, un panier ou une mesure conventionnelle. Ils ne remplacent pas la source officielle, la situation réelle du patient ni le paramétrage du logiciel métier.</p>",
-        "<h2>Codes CCAM repérés ou associés</h2>",
+        "<h2>Codes CCAM explicitement détectés</h2>",
         f"<p>{esc(code_text)}</p>",
         "<h2>Source et traçabilité</h2>",
         f"<p>Source officielle suivie : <a href=\"{esc(url)}\" target=\"_blank\" rel=\"noopener noreferrer\">{esc(title)}</a>. Texte rendu exploité : {chars} caractères. Article généré le {esc(now_fr())}.</p>",
@@ -221,7 +198,7 @@ def build_html(title: str, url: str, category: str, text: str, sentences: list[s
 def extract_page(page, url: str) -> dict[str, Any] | None:
     page.goto(url, wait_until="domcontentloaded", timeout=45_000)
     try:
-        page.wait_for_load_state("networkidle", timeout=10_000)
+        page.wait_for_load_state("networkidle", timeout=12_000)
     except Exception:
         pass
 
@@ -352,8 +329,7 @@ def pages_to_articles(pages: list[dict[str, Any]], records: list[dict[str, Any]]
         text = item["text"]
         url = item["url"]
         category = detect_category(title, text)
-        detected_codes = set(codes_in(text)) & record_codes
-        codes = select_fallback_codes(records, category, detected_codes)
+        detected_codes = sorted(set(codes_in(text)) & record_codes)
         slug = slugify(title)
         if slug in seen_ids:
             slug = f"{slug}-{len(seen_ids)+1}"
@@ -367,18 +343,20 @@ def pages_to_articles(pages: list[dict[str, Any]], records: list[dict[str, Any]]
             "source_url": url,
             "category": category,
             "tag": category,
-            "summary": build_summary(category, codes),
-            "content_html": build_html(title, url, category, text, sentences, codes, len(text)),
-            "codes": codes[:120],
-            "codes_detectes": sorted(detected_codes)[:180],
+            "summary": build_summary(category, len(detected_codes)),
+            "content_html": build_html(title, url, text, sentences, detected_codes, len(text)),
+            "codes": detected_codes[:80],
+            "codes_detectes": detected_codes[:180],
             "pdf_count": len(item.get("pdfs", [])),
             "pdfs": item.get("pdfs", [])[:8],
             "extracted_chars": len(text),
+            "source_text_excerpt": text[:SOURCE_TEXT_LIMIT],
             "confidence": "Haute" if len(text) > 1600 else "Moyenne",
             "generation": {
                 "mode": "playwright-browser-render",
                 "generated": now_fr(),
                 "text_chars": len(text),
+                "grounding": "visible_text_extracted_from_public_ameli_page",
             },
         })
     return articles
@@ -393,6 +371,8 @@ def link_articles_to_records(app: dict[str, Any]) -> None:
         code = record.get("code")
         if code in link_map:
             record["articles_lies"] = link_map[code][:8]
+        elif "articles_lies" in record:
+            record.pop("articles_lies", None)
 
 
 def main() -> None:
@@ -404,12 +384,21 @@ def main() -> None:
     pages = crawl_with_playwright()
     articles = pages_to_articles(pages, records)
     if not articles:
+        app["articles"] = []
+        app.setdefault("meta", {})["articles"] = 0
+        app["meta"]["article_generation"] = {
+            "mode": "playwright-browser-render",
+            "generated": now_fr(),
+            "pages_scanned": 0,
+            "description": "Aucun article réel extrait ; aucun dossier de substitution n'est publié.",
+        }
+        save_app(app)
         update_status("empty", {
             "count": 0,
             "mode": "playwright-browser-render",
-            "message": "Playwright n'a produit aucun article exploitable ; ensure_articles.py prendra le relais.",
+            "message": "Playwright n'a produit aucun article exploitable. Aucun faux dossier n'est publié.",
         })
-        print("Aucun article Playwright exploitable.")
+        print("Aucun article Playwright exploitable. Aucun dossier de substitution publié.")
         return
 
     app["articles"] = articles
@@ -426,7 +415,7 @@ def main() -> None:
         "count": len(articles),
         "mode": "playwright-browser-render",
         "pages_scanned": len(pages),
-        "message": "Articles réels générés depuis les pages Ameli rendues avec Playwright.",
+        "message": "Articles réels générés depuis les pages Ameli rendues avec Playwright. Codes liés uniquement si explicitement détectés.",
     })
     print(f"Articles Playwright générés : {len(articles)}")
 
