@@ -7,6 +7,7 @@ on:
       - .github/update-request.txt
       - scripts/update_all.py
       - scripts/enrich_articles_official_sources.py
+      - scripts/enrich_public_api_sources.py
       - scripts/enrich_articles_jina.py
       - scripts/enrich_articles_playwright.py
       - scripts/ensure_articles.py
@@ -51,6 +52,9 @@ jobs:
       - name: Extraire les dossiers depuis sources officielles stables
         run: python scripts/enrich_articles_official_sources.py
 
+      - name: Intégrer api.gouv data.gouv FHIR et MCP
+        run: python scripts/enrich_public_api_sources.py
+
       - name: Tenter Ameli/Jina/Playwright seulement si aucune source stable ne produit d'article
         run: |
           python - <<'PY'
@@ -58,7 +62,7 @@ jobs:
           path = pathlib.Path('data/app-data.json')
           data = json.loads(path.read_text(encoding='utf-8'))
           if data.get('articles'):
-              print(f"Sources officielles stables : {len(data['articles'])} article(s), Ameli protégé ignoré.")
+              print(f"Sources officielles stables/API : {len(data['articles'])} article(s), Ameli protégé ignoré.")
           else:
               try:
                   subprocess.check_call([sys.executable, 'scripts/enrich_articles_jina.py'])
