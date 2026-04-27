@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (list) {
     if (!articles.length) {
-      list.innerHTML = '<div class="note">Aucun dossier généré pour le moment. Les dossiers affichés ici proviennent uniquement de la synchronisation automatique réelle des sources suivies. Relancez la mise à jour puis revenez dans quelques minutes.</div>';
+      list.innerHTML = '<div class="note">Aucun vrai dossier n’a encore été extrait. Les dossiers ne sont plus générés artificiellement : ils apparaîtront uniquement après extraction réelle des sources Ameli par Playwright, puis relecture éventuelle par Gemini.</div>';
       return;
     }
 
@@ -19,11 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = encodeURIComponent(article.id || '');
       const tag = article.category || article.tag || 'Dossier';
       const count = Array.isArray(article.codes) ? article.codes.length : 0;
+      const mode = article.generation?.mode || article.ai_review?.mode || 'source suivie';
       return `<article class="card newsitem">
         <span class="pill p-med">${escHTML(tag)}</span>
         <h3><a href="article.html?id=${id}">${escHTML(article.title)}</a></h3>
         <p>${escHTML(article.summary)}</p>
-        <p class="small">${escHTML(article.source || 'Source')} · ${escHTML(formatDate(article.date))} · ${fmtInt(count)} code(s) détecté(s)</p>
+        <p class="small">${escHTML(article.source || 'Source')} · ${escHTML(formatDate(article.date))} · ${fmtInt(count)} code(s) explicitement détecté(s) · ${escHTML(mode)}</p>
       </article>`;
     }).join('');
   }
@@ -32,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = new URLSearchParams(location.search).get('id');
     const article = articles.find(item => item.id === id) || articles[0];
     if (!article) {
-      body.innerHTML = '<div class="note">Dossier introuvable. Aucun article réel n’a encore été généré par la synchronisation.</div>';
+      body.innerHTML = '<div class="note">Dossier introuvable. Aucun vrai article extrait n’est actuellement publié.</div>';
       return;
     }
 
@@ -46,12 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     body.innerHTML = sanitizeArticleHTML(article.content_html || '<p>Aucun contenu disponible.</p>');
 
-    const codes = Array.isArray(article.codes) ? article.codes.slice(0, 120) : [];
+    const allCodes = Array.isArray(article.codes) ? article.codes : [];
+    const visibleCodes = allCodes.slice(0, 30);
     const codesBox = document.getElementById('articleCodes');
     if (codesBox) {
-      codesBox.innerHTML = codes.length
-        ? codes.map(code => `<a class="pill p-out" style="margin:4px" href="acte.html?code=${encodeURIComponent(code)}">${escHTML(code)}</a>`).join('')
-        : 'Aucun code détecté automatiquement.';
+      if (!visibleCodes.length) {
+        codesBox.innerHTML = 'Aucun code CCAM explicitement détecté dans le texte source.';
+      } else {
+        const extra = allCodes.length > visibleCodes.length
+          ? `<p class="small" style="margin-top:10px">${fmtInt(allCodes.length - visibleCodes.length)} autre(s) code(s) explicitement détecté(s), masqué(s) pour éviter une page illisible.</p>`
+          : '';
+        codesBox.innerHTML = visibleCodes.map(code => `<a class="pill p-out" style="margin:4px" href="acte.html?code=${encodeURIComponent(code)}">${escHTML(code)}</a>`).join('') + extra;
+      }
     }
   }
 });
