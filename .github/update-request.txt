@@ -1,2 +1,2 @@
-manual update requested at 2026-04-27T00:55:00+02:00
-reason: strict rerun after removing artificial fallback articles and fake code associations
+manual update requested at 2026-04-27T01:08:00+02:00
+reason: rerun with expanded Ameli news scraping and dense Gemini rewrite
