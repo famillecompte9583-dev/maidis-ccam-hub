@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Relecture éditoriale optionnelle des dossiers via Gemini.
 
-Gemini sert uniquement à relire et structurer les contenus réellement extraits.
+Gemini sert à reformuler densément les contenus réellement extraits par Playwright.
 Il ne doit pas inventer de dossier, de règle métier ou de code CCAM.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ PARIS = ZoneInfo("Europe/Paris")
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 MAX_ARTICLES = int(os.environ.get("AI_REVIEW_MAX_ARTICLES", "12"))
-TIMEOUT_SECONDS = int(os.environ.get("AI_REVIEW_TIMEOUT", "45"))
+TIMEOUT_SECONDS = int(os.environ.get("AI_REVIEW_TIMEOUT", "60"))
 
 SAFE_TAGS = {"p", "ul", "ol", "li", "strong", "b", "em", "i", "br", "h2", "h3", "h4", "a", "span"}
 UNSAFE_RE = re.compile(r"<\s*(script|iframe|object|embed|link|meta|form|input|button|textarea)\b|\son[a-z]+\s*=|javascript\s*:", re.I)
@@ -47,10 +47,7 @@ def load_json(path: pathlib.Path) -> dict[str, Any]:
 
 def save_app(app: dict[str, Any]) -> None:
     APP_PATH.write_text(json.dumps(app, ensure_ascii=False, indent=2), encoding="utf-8")
-    (DATA_DIR / "app-data.js").write_text(
-        "window.CCAM_APP_DATA = " + json.dumps(app, ensure_ascii=False) + ";\n",
-        encoding="utf-8",
-    )
+    (DATA_DIR / "app-data.js").write_text("window.CCAM_APP_DATA = " + json.dumps(app, ensure_ascii=False) + ";\n", encoding="utf-8")
 
 
 def update_status(status: str, details: dict[str, Any]) -> None:
@@ -114,7 +111,6 @@ def sanitize_html_fragment(fragment: str) -> str:
 
 
 def allowed_codes(article: dict[str, Any], record_codes: set[str]) -> set[str]:
-    # Strict : uniquement les codes déjà détectés par le scraper dans la page source.
     detected = {code for code in article.get("codes_detectes", []) if isinstance(code, str)}
     known = {code for code in article.get("codes", []) if isinstance(code, str)}
     return (detected | known) & record_codes
@@ -132,7 +128,9 @@ def compact_article(article: dict[str, Any]) -> dict[str, Any]:
         "source": article.get("source"),
         "source_url": article.get("source_url") or article.get("url"),
         "codes_detectes": article.get("codes_detectes", [])[:80],
-        "source_text_reel": source_text[:12000],
+        "source_text_reel": source_text[:24000],
+        "source_text_chars": len(source_text),
+        "opened_sections": article.get("opened_sections"),
         "generation": article.get("generation"),
     }
 
@@ -141,15 +139,25 @@ def build_prompt(article: dict[str, Any], allowed: set[str]) -> str:
     allowed_codes_text = ", ".join(sorted(allowed)[:120]) or "aucun"
     payload = compact_article(article)
     return f"""
-Tu es relecteur éditorial pour un site public français d'aide à la lecture CCAM.
-Tu dois créer une fiche claire à partir du texte réel extrait d'une page Ameli publique.
+Tu es éditeur documentaire pour un site public français d'aide à la lecture CCAM.
+Tu dois REFORMULER DENSÉMENT le texte réel extrait d'une page Ameli publique.
+
+Objectif : conserver la densité utile de la source, pas faire un simple résumé.
+Le lecteur doit retrouver l'essentiel opérationnel de l'article Ameli : dates, conditions,
+montants, étapes, exceptions, obligations, acteurs concernés, modalités pratiques,
+points de facturation, liens avec les actes ou la prise en charge.
 
 Règles strictes :
-- Base-toi uniquement sur le champ source_text_reel.
+- Base-toi uniquement sur source_text_reel.
 - Ne crée aucune information absente du texte source.
+- Ne copie pas de longs passages mot pour mot : reformule.
 - Ne donne pas de conseil médical individuel.
 - Ne présente jamais les montants/taux comme une vérité opposable.
 - La source officielle reste prioritaire.
+- Structure en plusieurs sections denses, pas en 3 phrases génériques.
+- Utilise des listes pour les conditions, étapes et points de vigilance.
+- Si le texte source contient des dates, montants, seuils, conditions ou délais, conserve-les.
+- Si le texte source contient des limitations ou exceptions, conserve-les.
 - N'utilise que ces balises HTML : <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <br>, <a>.
 - Pas de script, iframe, style inline, attribut on*, javascript:, tableau complexe ou image.
 - Les codes CCAM renvoyés doivent appartenir exclusivement à cette liste explicitement détectée : {allowed_codes_text}.
@@ -159,9 +167,9 @@ Règles strictes :
 Schéma attendu :
 {{
   "title": "titre clair et fidèle à la source",
-  "summary": "résumé public en 1 à 2 phrases, fidèle au texte source",
+  "summary": "résumé public dense en 2 à 3 phrases, fidèle au texte source",
   "category": "CCAM|Tarifs|Dentaire|100 % Santé|Convention|Dossier",
-  "content_html": "HTML structuré et sourcé, sans ajout non présent dans la source",
+  "content_html": "HTML dense structuré en 4 à 8 sections, fidèle à la source, sans ajout",
   "codes": ["codes CCAM autorisés uniquement"],
   "confidence": "Haute|Moyenne|Basse"
 }}
@@ -176,18 +184,13 @@ def call_gemini(prompt: str, api_key: str) -> dict[str, Any]:
     body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.15,
-            "topP": 0.7,
-            "maxOutputTokens": 4096,
+            "temperature": 0.1,
+            "topP": 0.6,
+            "maxOutputTokens": 8192,
             "responseMimeType": "application/json",
         },
     }
-    req = urllib.request.Request(
-        endpoint,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
-    )
+    req = urllib.request.Request(endpoint, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
     with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as response:
         raw = json.loads(response.read().decode("utf-8"))
     text = raw.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -201,14 +204,16 @@ def normalize_ai_result(result: dict[str, Any], original: dict[str, Any], allowe
         raise ValueError("La réponse IA n'est pas un objet JSON")
 
     title = str(result.get("title") or original.get("title") or "Dossier").strip()[:180]
-    summary = str(result.get("summary") or original.get("summary") or "").strip()[:420]
+    summary = str(result.get("summary") or original.get("summary") or "").strip()[:700]
     category = str(result.get("category") or original.get("category") or original.get("tag") or "Dossier").strip()
     if category not in {"CCAM", "Tarifs", "Dentaire", "100 % Santé", "Convention", "Dossier"}:
         category = original.get("category") or original.get("tag") or "Dossier"
 
     content_html = sanitize_html_fragment(str(result.get("content_html") or original.get("content_html") or ""))
-    if not content_html or len(plain_text_from_html(content_html)) < 120:
-        raise ValueError("Contenu IA trop court ou vide")
+    source_len = len(str(original.get("source_text_excerpt") or ""))
+    min_len = 350 if source_len < 2500 else 900
+    if not content_html or len(plain_text_from_html(content_html)) < min_len:
+        raise ValueError("Contenu IA trop court par rapport à la source")
 
     codes = []
     for code in result.get("codes", []):
@@ -228,12 +233,7 @@ def normalize_ai_result(result: dict[str, Any], original: dict[str, Any], allowe
         "content_html": content_html,
         "codes": codes,
         "confidence": confidence,
-        "ai_review": {
-            "provider": "gemini",
-            "model": MODEL,
-            "reviewed_at": now_fr(),
-            "mode": "grounded_editorial_review_only",
-        },
+        "ai_review": {"provider": "gemini", "model": MODEL, "reviewed_at": now_fr(), "mode": "dense_grounded_rewrite"},
     }
 
 
@@ -264,7 +264,7 @@ def main() -> None:
             prompt = build_prompt(article, allowed)
             result = call_gemini(prompt, api_key)
             reviewed.append(normalize_ai_result(result, article, allowed))
-            print(f"Article relu par Gemini : {article.get('title')}")
+            print(f"Article relu densément par Gemini : {article.get('title')}")
             time.sleep(1.2)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")[:500]
@@ -296,7 +296,7 @@ def main() -> None:
         "reviewed_articles": app["meta"]["ai_review"]["reviewed_articles"],
         "errors": errors[:8],
     })
-    print("Relecture Gemini terminée.")
+    print("Relecture dense Gemini terminée.")
 
 
 if __name__ == "__main__":
