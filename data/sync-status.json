@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T09:43:00+02:00",
+  "generated": "2026-04-27T10:09:44+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 5.27
+      "duration_seconds": 5.26
     },
     "attempts": [
       {
@@ -24,38 +24,32 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 5.27,
+        "duration_seconds": 5.26,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-27T09:42:18+02:00",
-    "finished_at": "2026-04-27T09:43:00+02:00",
-    "duration_seconds": 42.54
+    "started_at": "2026-04-27T10:08:58+02:00",
+    "finished_at": "2026-04-27T10:09:43+02:00",
+    "duration_seconds": 45.52
   },
   "articles": {
-    "status": "ok",
-    "generated": "2026-04-27T09:44:22+02:00",
-    "count": 1,
-    "mode": "jina-reader-markdown",
-    "pages_scanned": 12,
-    "total_extracted_chars": 776,
-    "errors": [],
-    "message": "Articles Ameli extraits via Jina Reader. Codes liés uniquement si explicitement détectés."
+    "status": "empty",
+    "generated": "2026-04-27T10:15:44+02:00",
+    "count": 0,
+    "mode": "playwright-browser-render-expanded-sections",
+    "message": "Aucun vrai article Ameli exploitable extrait."
   },
   "articles_guard": {
-    "status": "ok",
-    "generated": "2026-04-27T09:44:22+02:00",
-    "count": 1,
-    "message": "Vrais articles présents ; aucun fallback publié."
+    "status": "empty",
+    "generated": "2026-04-27T10:15:44+02:00",
+    "count": 0,
+    "message": "Aucun vrai article extrait ; aucun faux dossier publié."
   },
   "ai_review": {
-    "status": "ok",
-    "generated": "2026-04-27T09:44:26+02:00",
-    "provider": "gemini",
-    "model": "gemini-2.5-flash-lite",
-    "attempted_articles": 1,
-    "reviewed_articles": 1,
-    "errors": []
+    "status": "skipped",
+    "generated": "2026-04-27T10:15:45+02:00",
+    "reason": "aucun article réel à relire",
+    "model": "gemini-2.5-flash-lite"
   }
 }
