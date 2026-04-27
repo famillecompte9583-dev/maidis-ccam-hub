@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T11:52:35+02:00",
+  "generated": "2026-04-27T12:51:08+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 4.69
+      "duration_seconds": 4.81
     },
     "attempts": [
       {
@@ -24,18 +24,18 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 4.69,
+        "duration_seconds": 4.81,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-27T11:51:54+02:00",
-    "finished_at": "2026-04-27T11:52:35+02:00",
-    "duration_seconds": 41.43
+    "started_at": "2026-04-27T12:50:21+02:00",
+    "finished_at": "2026-04-27T12:51:08+02:00",
+    "duration_seconds": 47.27
   },
   "articles": {
     "status": "ok",
-    "generated": "2026-04-27T11:53:53+02:00",
+    "generated": "2026-04-27T12:52:37+02:00",
     "count": 24,
     "mode": "official-rss-and-public-html",
     "sources_attempted": 10,
@@ -73,19 +73,47 @@
     ],
     "message": "Dossiers extraits depuis HAS, Santé publique France, Vie-publique, Assurance Maladie institutionnelle et DGS/ministère lorsque lisibles."
   },
+  "public_api_sources": {
+    "status": "ok",
+    "generated": "2026-04-27T12:52:55+02:00",
+    "total": 10,
+    "known": 3,
+    "api_gouv": 5,
+    "data_gouv": 2,
+    "articles_added": 10,
+    "errors": [],
+    "message": "Catalogue public API/sources intégré : api.gouv.fr, data.gouv.fr, FHIR Annuaire Santé et MCP data.gouv."
+  },
   "articles_guard": {
     "status": "ok",
-    "generated": "2026-04-27T11:53:53+02:00",
-    "count": 24,
+    "generated": "2026-04-27T12:52:56+02:00",
+    "count": 32,
     "message": "Vrais articles présents ; aucun fallback publié."
   },
   "ai_review": {
-    "status": "ok",
-    "generated": "2026-04-27T11:54:57+02:00",
+    "status": "partial",
+    "generated": "2026-04-27T12:53:44+02:00",
     "provider": "gemini",
     "model": "gemini-2.5-flash-lite",
     "attempted_articles": 12,
-    "reviewed_articles": 12,
-    "errors": []
+    "reviewed_articles": 8,
+    "errors": [
+      {
+        "title": "Appel à candidatures pour élargir les compétences du Conseil scientifique destiné à l’Observatoire de la santé des riverains du projet de centre de stockage de Bure (Osarib) et à l’étude sur l’état de santé et la santé perçue des populations riveraines de",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 30.58361912s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n "
+      },
+      {
+        "title": "Communiqué de presse - Semaine européenne de la vaccination 2026 : protéger les jeunes grâce à la vaccination, un enjeu de santé publique majeur",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 20.519749261s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "3ème édition #MoisSansTabac. Bien se préparer pour augmenter ses chances de succès.",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 15.886777614s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      },
+      {
+        "title": "À chaque âge et en tout lieu, les noyades restent un danger : adoptez les bons comportements !",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite\\nPlease retry in 15.768099126s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+      }
+    ]
   }
 }
