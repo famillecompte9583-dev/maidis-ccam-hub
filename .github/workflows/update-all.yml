@@ -13,10 +13,11 @@ on:
       - scripts/ensure_articles.py
       - scripts/ai_review_articles.py
       - scripts/validate_public_data.py
+      - scripts/common_app.py
+      - requirements.txt
+      - tests/**
       - .github/workflows/update-all.yml
   schedule:
-    # Deux passages quotidiens suffisent pour une donnée institutionnelle :
-    # fiable, moins bruyant, plus respectueux des sources, moins de commits inutiles.
     - cron: "17 5,17 * * *"
 
 concurrency:
@@ -39,12 +40,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Installer les dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install pdfplumber playwright
+          pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+
+      - name: Exécuter les tests de cohérence légers
+        run: pytest -q
 
       - name: Synchroniser la base CCAM
         run: python scripts/update_all.py
