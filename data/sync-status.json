@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-28T20:51:52+02:00",
+  "generated": "2026-04-29T09:36:17+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 5.05
+      "duration_seconds": 5.13
     },
     "attempts": [
       {
@@ -24,18 +24,18 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 5.05,
+        "duration_seconds": 5.13,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-04-28T20:51:09+02:00",
-    "finished_at": "2026-04-28T20:51:52+02:00",
-    "duration_seconds": 42.99
+    "started_at": "2026-04-29T09:35:33+02:00",
+    "finished_at": "2026-04-29T09:36:17+02:00",
+    "duration_seconds": 43.71
   },
   "articles": {
     "status": "ok",
-    "generated": "2026-04-28T20:52:40+02:00",
+    "generated": "2026-04-29T09:36:58+02:00",
     "count": 21,
     "mode": "official-rss-and-public-html-recent-only",
     "minimum_date": "2024-01-01",
@@ -78,7 +78,7 @@
   },
   "public_api_sources": {
     "status": "ok",
-    "generated": "2026-04-28T20:52:54+02:00",
+    "generated": "2026-04-29T09:37:12+02:00",
     "total": 10,
     "known": 3,
     "api_gouv": 5,
@@ -89,21 +89,21 @@
   },
   "articles_guard": {
     "status": "ok",
-    "generated": "2026-04-28T20:52:55+02:00",
+    "generated": "2026-04-29T09:37:13+02:00",
     "count": 21,
     "message": "Vrais articles présents ; aucun fallback publié."
   },
   "ai_review": {
     "status": "partial",
-    "generated": "2026-04-28T20:53:45+02:00",
+    "generated": "2026-04-29T09:38:12+02:00",
     "provider": "gemini",
     "model": "gemini-2.5-flash-lite",
     "attempted_articles": 12,
     "reviewed_articles": 11,
     "errors": [
       {
-        "title": "Comité d’experts Santé Environnement Travail. Relevé de décisions du comité du 6 septembre 2024",
-        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-lite\\nPlease retry in 15.079479161s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
+        "title": "Comité d’experts Santé Environnement Travail. Relevé de décisions du comité du 21 mars 2024",
+        "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-lite\\nPlease retry in 51.740356576s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n"
       }
     ]
   }
