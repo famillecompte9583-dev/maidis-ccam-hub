@@ -6,11 +6,9 @@ Il ne doit pas inventer de dossier, de règle métier ou de code CCAM.
 """
 from __future__ import annotations
 
-import datetime as dt
 import html
 import json
 import os
-import pathlib
 import re
 import sys
 import time
@@ -18,13 +16,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
-from zoneinfo import ZoneInfo
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-APP_PATH = DATA_DIR / "app-data.json"
-STATUS_PATH = DATA_DIR / "sync-status.json"
-PARIS = ZoneInfo("Europe/Paris")
+from scripts.common_app import APP_PATH, load_app, now_fr, save_app, update_status
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 MAX_ARTICLES = int(os.environ.get("AI_REVIEW_MAX_ARTICLES", "12"))
@@ -33,33 +26,6 @@ TIMEOUT_SECONDS = int(os.environ.get("AI_REVIEW_TIMEOUT", "60"))
 SAFE_TAGS = {"p", "ul", "ol", "li", "strong", "b", "em", "i", "br", "h2", "h3", "h4", "a", "span"}
 UNSAFE_RE = re.compile(r"<\s*(script|iframe|object|embed|link|meta|form|input|button|textarea)\b|\son[a-z]+\s*=|javascript\s*:", re.I)
 CODE_RE = re.compile(r"\b[A-Z]{4}\d{3}\b")
-
-
-def now_fr() -> str:
-    return dt.datetime.now(dt.timezone.utc).astimezone(PARIS).isoformat(timespec="seconds")
-
-
-def load_json(path: pathlib.Path) -> dict[str, Any]:
-    if not path.exists() or path.stat().st_size == 0:
-        raise SystemExit(f"Fichier absent ou vide : {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def save_app(app: dict[str, Any]) -> None:
-    APP_PATH.write_text(json.dumps(app, ensure_ascii=False, indent=2), encoding="utf-8")
-    (DATA_DIR / "app-data.js").write_text("window.CCAM_APP_DATA = " + json.dumps(app, ensure_ascii=False) + ";\n", encoding="utf-8")
-
-
-def update_status(status: str, details: dict[str, Any]) -> None:
-    if STATUS_PATH.exists() and STATUS_PATH.stat().st_size:
-        try:
-            current = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            current = {}
-    else:
-        current = {}
-    current["ai_review"] = {"status": status, "generated": now_fr(), **details}
-    STATUS_PATH.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def plain_text_from_html(value: str) -> str:
@@ -240,15 +206,15 @@ def normalize_ai_result(result: dict[str, Any], original: dict[str, Any], allowe
 def main() -> None:
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        update_status("skipped", {"reason": "GEMINI_API_KEY absent", "model": MODEL})
+        update_status("ai_review", "skipped", {"reason": "GEMINI_API_KEY absent", "model": MODEL})
         print("Gemini désactivé : secret GEMINI_API_KEY absent.")
         return
 
-    app = load_json(APP_PATH)
+    app = load_app()
     articles = app.get("articles", [])
     records = app.get("records", [])
     if not isinstance(articles, list) or not articles:
-        update_status("skipped", {"reason": "aucun article réel à relire", "model": MODEL})
+        update_status("ai_review", "skipped", {"reason": "aucun article réel à relire", "model": MODEL})
         print("Gemini désactivé : aucun article.")
         return
     record_codes = {r.get("code") for r in records if isinstance(r, dict) and isinstance(r.get("code"), str)}
@@ -289,7 +255,7 @@ def main() -> None:
         "errors": len(errors),
     }
     save_app(app)
-    update_status("ok" if not errors else "partial", {
+    update_status("ai_review", "ok" if not errors else "partial", {
         "provider": "gemini",
         "model": MODEL,
         "attempted_articles": min(len(articles), MAX_ARTICLES),
