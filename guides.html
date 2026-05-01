@@ -1,2 +1,169 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guides — Annuaire CCAM Santé</title><link rel="stylesheet" href="style.css"></head><body data-page="guides"><nav class="nav"><div class="navin"><a class="brand" href="index.html"><span class="logo">⚕</span><span>Annuaire CCAM Santé</span></a><button class="menu" aria-label="menu">☰</button><div class="links"><a data-page="index" href="index.html">Accueil</a><a data-page="actes" href="actes.html">Actes</a><a data-page="guides" href="guides.html">Guides</a><a data-page="exports" href="exports.html">Exports</a><a data-page="actualites" href="actualites.html">Veille</a></div></div></nav>
-<header class="hero"><div class="heroin" style="grid-template-columns:1fr"><div><span class="eyebrow">Repères métier</span><h1>Guides et règles utiles</h1><p>Les règles de remboursement, paniers de soins et majorations doivent toujours être vérifiées avec les textes officiels.</p></div></div></header><main class="page"><div class="grid3"><section class="card info"><h3>CCAM médicale</h3><p>Les actes médicaux CCAM sont présentés avec leur BRSS et un taux standard d’aide à la lecture. Le panier 100% Santé est indiqué “hors périmètre” lorsqu’il ne s’agit pas d’une prothèse dentaire.</p></section><section class="card info"><h3>100% Santé dentaire</h3><p>Les paniers concernent les prothèses dentaires : couronnes, bridges et prothèses amovibles. Les codes connus RAC 0 et modérés sont identifiés dans l’annuaire.</p></section><section class="card info"><h3>Cas particuliers</h3><p>ALD, AT/MP, maternité, C2S, régime local Alsace-Moselle, DOM, associations d’actes, modificateurs et majorations doivent être vérifiés selon le contexte patient.</p></section></div><section class="card info" style="margin-top:16px"><h3>Sources de référence</h3><ul><li>CCAM Ameli et documents officiels.</li><li>Tarifs conventionnels et honoraires limites.</li><li>Pages Ameli 100% Santé dentaire et informations de prise en charge.</li></ul></section></main><footer class="footer"><div class="footin"><div><b>Annuaire CCAM Santé</b><div class="small">Annuaire d’aide à la consultation et au paramétrage. Ne remplace pas les textes officiels ni les règles de facturation applicables.</div></div><div><a href="https://www.ameli.fr/accueil-de-la-ccam/" target="_blank" rel="noopener">CCAM Ameli</a> · <a href="actualites.html">Veille</a></div></div></footer><script src="js/common.js?v=20260426-2"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Guides Annuaire CCAM Santé : paniers 100 % Santé dentaire, cas particuliers de prise en charge et repères de paramétrage CCAM médicale.">
+  <title>Guides — Annuaire CCAM Santé</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="theme.js" defer></script>
+  <script src="nav.js" defer></script>
+</head>
+<body data-page="guides">
+  <div data-nav-root></div>
+
+  <header class="hero">
+    <div class="heroin" style="grid-template-columns:1fr">
+      <div>
+        <span class="eyebrow">Repères métier</span>
+        <h1>Guides et règles utiles</h1>
+        <p>Ces repères servent à lire plus vite les données du site. Ils ne remplacent pas la CCAM en vigueur, les conventions ni les règles de facturation applicables.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="grid3">
+      <section class="card info">
+        <h3>CCAM médicale</h3>
+        <p>La lecture fiable d’un acte repose sur le couple code + activité + phase, la BRSS, le contexte patient et les règles d’exonération ou de majoration.</p>
+      </section>
+
+      <section class="card info">
+        <h3>100 % Santé dentaire</h3>
+        <p>Les paniers concernent principalement les actes prothétiques. Le devis, le matériau, la localisation et la situation clinique restent déterminants.</p>
+      </section>
+
+      <section class="card info">
+        <h3>Vigilance paramétrage</h3>
+        <p>Les montants AMO affichés par le site sont indicatifs. Ils doivent être revérifiés avant usage opérationnel lorsqu’un cas particulier s’applique.</p>
+      </section>
+    </div>
+
+    <section class="card table-card" style="margin-top:16px">
+      <h3>Comparatif des 3 paniers 100 % Santé dentaire</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Panier</th>
+            <th>Description</th>
+            <th>Exemple de code CCAM</th>
+            <th>Impact patient</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill p-rac">RAC 0</span></td>
+            <td>Offre entrant dans le dispositif 100 % Santé, sans reste à charge sur l’offre réglementée lorsque les conditions sont réunies.</td>
+            <td><span class="code">HBLD031</span></td>
+            <td>Reste à charge nul sur le panier encadré, sous réserve du devis et des conditions d’éligibilité.</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-mod">RAC modéré</span></td>
+            <td>Panier à honoraires maîtrisés, avec plafonds ou limites de prise en charge à rapprocher du devis et de la situation clinique.</td>
+            <td><span class="code">HBLD040</span></td>
+            <td>Reste à charge encadré mais non nul en pratique selon le contexte et le contrat complémentaire.</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-free">Libre</span></td>
+            <td>Actes prothétiques hors listes RAC 0 ou panier modéré, ou nécessitant une vérification complémentaire selon matériau, localisation ou indication.</td>
+            <td>Variable selon l’acte prothétique</td>
+            <td>Reste à charge potentiellement plus élevé ; contrôle du devis indispensable.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="small" style="margin-top:12px">Les exemples de codes servent de repère rapide. La classification doit toujours être confirmée sur l’acte réellement facturé.</p>
+    </section>
+
+    <section class="card table-card" style="margin-top:16px">
+      <h3>Cas particuliers</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Situation</th>
+            <th>Règle courte</th>
+            <th>Taux applicable</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ALD</td>
+            <td>Prise en charge à 100 % sur la base Assurance Maladie lorsque les soins sont en rapport avec l’ALD reconnue.</td>
+            <td>100 % BRSS pour les soins liés à l’ALD, sinon taux habituel.</td>
+          </tr>
+          <tr>
+            <td>AT / MP</td>
+            <td>Les soins imputables à un accident du travail ou une maladie professionnelle relèvent d’une prise en charge spécifique.</td>
+            <td>100 % BRSS en règle générale.</td>
+          </tr>
+          <tr>
+            <td>Maternité</td>
+            <td>À partir du 1er jour du 6e mois et jusqu’à 12 jours après l’accouchement, de nombreux soins sont pris en charge à 100 %.</td>
+            <td>100 % BRSS sur les soins concernés.</td>
+          </tr>
+          <tr>
+            <td>C2S</td>
+            <td>La complémentaire santé solidaire prend en charge le ticket modérateur et encadre certains dépassements dans son périmètre.</td>
+            <td>Taux légal de l’acte + complément C2S selon le panier applicable.</td>
+          </tr>
+          <tr>
+            <td>Alsace-Moselle</td>
+            <td>Le régime local améliore la couverture de nombreux soins de ville ; il faut confirmer l’acte et le contexte au moment du calcul.</td>
+            <td>Souvent 90 % sur la base pour les soins concernés, à confirmer selon le cas.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card table-card" style="margin-top:16px">
+      <h3>Modificateurs courants en CCAM médicale</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Famille</th>
+            <th>Usage courant</th>
+            <th>Vigilance paramétrage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Urgence / horaire particulier</td>
+            <td>Majoration ou adaptation liée à l’heure de réalisation, à l’urgence ou au contexte d’intervention.</td>
+            <td>Vérifier les conditions temporelles exactes et les cumuls autorisés.</td>
+          </tr>
+          <tr>
+            <td>Geste bilatéral</td>
+            <td>Utilisé lorsque l’acte est réalisé des deux côtés ou sur deux sites symétriques dans les cas prévus.</td>
+            <td>Contrôler si le geste est réellement bilatéral et si le libellé autorise le modificateur.</td>
+          </tr>
+          <tr>
+            <td>Âge / contexte patient</td>
+            <td>Certains actes varient selon l’âge ou la situation clinique du patient.</td>
+            <td>Ne pas appliquer automatiquement sans vérifier l’indication précise.</td>
+          </tr>
+          <tr>
+            <td>Voie d’abord / technicité</td>
+            <td>Le mode de réalisation, la difficulté technique ou l’environnement opératoire peuvent modifier la valorisation.</td>
+            <td>Relire la notice de l’acte et les exclusions de cumul.</td>
+          </tr>
+          <tr>
+            <td>Association d’actes</td>
+            <td>Les règles de cumul ou de minoration entre actes peuvent impacter la facturation finale.</td>
+            <td>Contrôler systématiquement l’ordre de facturation et les règles de compatibilité.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footin">
+      <div>
+        <b>Annuaire CCAM Santé</b>
+        <div class="small">Annuaire d’aide à la consultation et au paramétrage. Ne remplace pas les textes officiels ni les règles de facturation applicables.</div>
+      </div>
+      <div><a href="https://www.ameli.fr/accueil-de-la-ccam/" target="_blank" rel="noopener noreferrer">CCAM Ameli</a> · <a href="actualites.html">Veille</a></div>
+    </div>
+  </footer>
+</body>
+</html>
