@@ -1,2 +1,164 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Annuaire CCAM Santé — Accueil</title><link rel="stylesheet" href="style.css"></head><body data-page="index"><nav class="nav"><div class="navin"><a class="brand" href="index.html"><span class="logo">⚕</span><span>Annuaire CCAM Santé</span></a><button class="menu" aria-label="menu">☰</button><div class="links"><a data-page="index" href="index.html">Accueil</a><a data-page="actes" href="actes.html">Actes</a><a data-page="dossiers" href="dossiers.html">Dossiers</a><a data-page="sources" href="sources.html">Sources &amp; API</a><a data-page="changements" href="changements.html">Changements</a><a data-page="guides" href="guides.html">Guides</a><a data-page="exports" href="exports.html">Exports</a><a data-page="actualites" href="actualites.html">Veille</a></div></div></nav>
-<header class="hero"><div class="heroin"><div><span class="eyebrow">CCAM médicale et dentaire · données synchronisées</span><h1>Annuaire public des actes CCAM</h1><p>Consultez les actes médicaux et bucco-dentaires, les tarifs de base, les paniers de soins, les dossiers reformulés et les changements récents.</p><div class="actions"><a class="btn primary" href="actes.html">Rechercher un acte</a><a class="btn ghost" href="dossiers.html">Lire les dossiers</a><a class="btn ghost" href="changements.html">Voir les changements</a></div></div><aside class="glass"><div class="stats"><div class="stat"><b id="total">—</b><span>actes tarifés référencés</span></div><div class="stat"><b id="medical">—</b><span>actes médicaux</span></div><div class="stat"><b id="dental">—</b><span>actes bucco-dentaires</span></div><div class="stat"><b id="rac0">—</b><span>codes RAC 0 connus</span></div></div><p class="small" style="color:#dbeafe;margin-top:16px">Dernière mise à jour : <span id="generated">—</span></p><p class="small" id="dataStatus" style="color:#dbeafe;margin-top:8px">Chargement des données…</p></aside></div></header><main class="page"><div class="grid3"><section class="card info"><h3>Rechercher un acte</h3><p>Accédez au moteur de recherche par code, libellé, domaine ou panier de soins avec BRSS, taux indicatif et AMO estimé.</p><a class="btn primary" href="actes.html">Ouvrir la recherche</a></section><section class="card info"><h3>Dossiers suivis</h3><p>Le pipeline explore des sources institutionnelles ciblées, extrait le contenu utile et le remet en page comme des dossiers lisibles.</p><a class="btn primary" href="dossiers.html">Lire les dossiers</a></section><section class="card info"><h3>Suivi des changements</h3><p>La base compare automatiquement la génération actuelle avec la précédente pour repérer ajouts, retraits et modifications.</p><a class="btn primary" href="changements.html">Voir les changements</a></section></div><div class="grid3" style="margin-top:16px"><section class="card info"><h3>Exports CSV</h3><p>Exportez les résultats filtrés ou une fiche acte pour vos contrôles et travaux de paramétrage.</p><a class="btn primary" href="exports.html">Préparer un export</a></section><section class="card info"><h3>Guides pratiques</h3><p>Retrouvez les repères de lecture : CCAM, 100 % Santé, paniers, cas particuliers et points de vigilance.</p><a class="btn primary" href="guides.html">Consulter les guides</a></section><section class="card info"><h3>Sources & API</h3><p>Consultez la traçabilité des sources officielles, API et catalogues publics utilisés ou surveillés par le site.</p><a class="btn primary" href="sources.html">Voir les sources</a></section></div></main><footer class="footer"><div class="footin"><div><b>Annuaire CCAM Santé</b><div class="small">Annuaire d’aide à la consultation et au paramétrage. Ne remplace pas les textes officiels ni les règles de facturation applicables.</div></div><div><a href="https://www.ameli.fr/accueil-de-la-ccam/" target="_blank" rel="noopener">CCAM Ameli</a> · <a href="sources.html">Sources &amp; API</a></div></div></footer><script src="data/app-data.js"></script><script src="js/common.js"></script><script src="js/home.js"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Accueil de l’Annuaire CCAM Santé : actes médicaux et bucco-dentaires, BRSS, paniers 100 % Santé, changements, exports et sources institutionnelles.">
+  <title>Accueil — Annuaire CCAM Santé</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="theme.js" defer></script>
+  <script src="nav.js" defer></script>
+</head>
+<body data-page="index">
+  <div data-nav-root></div>
+
+  <header class="hero">
+    <div class="heroin">
+      <div>
+        <span class="eyebrow">CCAM médicale et dentaire · données synchronisées</span>
+        <h1>Annuaire public des actes CCAM</h1>
+        <p>Consultez les actes médicaux et bucco-dentaires, les tarifs de base, les paniers de soins, les dossiers institutionnels reformulés et les changements récents.</p>
+        <div class="actions">
+          <a class="btn primary" href="actes.html">Rechercher un acte</a>
+          <a class="btn ghost" href="dossiers.html">Lire les dossiers</a>
+          <a class="btn ghost" href="changements.html">Voir les changements</a>
+        </div>
+      </div>
+
+      <aside class="glass">
+        <div class="stats">
+          <div class="stat"><b id="total">—</b><span>actes tarifés référencés</span></div>
+          <div class="stat"><b id="medical">—</b><span>actes médicaux</span></div>
+          <div class="stat"><b id="dental">—</b><span>actes bucco-dentaires</span></div>
+          <div class="stat"><b id="rac0">—</b><span>codes RAC 0 connus</span></div>
+        </div>
+        <p class="small" style="color:#dbeafe;margin-top:16px">Dernière mise à jour : <span id="generated">—</span></p>
+        <div id="homeStatus" class="small" style="color:#dbeafe;margin-top:8px">
+          <span class="inline-status"><span class="spinner-inline" aria-hidden="true"></span>Chargement des données…</span>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="grid3">
+      <section class="card info">
+        <h3>Rechercher un acte</h3>
+        <p>Accédez au moteur de recherche par code, libellé, domaine ou panier de soins avec BRSS, taux indicatif et AMO estimé.</p>
+        <a class="btn primary" href="actes.html">Ouvrir la recherche</a>
+      </section>
+
+      <section class="card info">
+        <h3>Dossiers suivis</h3>
+        <p>Le pipeline explore des sources institutionnelles ciblées, extrait le contenu utile et le remet en page comme des dossiers lisibles.</p>
+        <a class="btn primary" href="dossiers.html">Lire les dossiers</a>
+      </section>
+
+      <section class="card info">
+        <h3>Suivi des changements</h3>
+        <p>La base compare automatiquement la génération actuelle avec la précédente pour repérer ajouts, retraits et modifications.</p>
+        <a class="btn primary" href="changements.html">Voir les changements</a>
+      </section>
+    </div>
+
+    <div class="grid3" style="margin-top:16px">
+      <section class="card info">
+        <h3>Exports CSV</h3>
+        <p>Exportez les résultats filtrés ou une fiche acte pour vos contrôles et travaux de paramétrage.</p>
+        <a class="btn primary" href="exports.html">Préparer un export</a>
+      </section>
+
+      <section class="card info">
+        <h3>Guides pratiques</h3>
+        <p>Retrouvez les repères de lecture : CCAM, 100 % Santé, paniers, cas particuliers et points de vigilance.</p>
+        <a class="btn primary" href="guides.html">Consulter les guides</a>
+      </section>
+
+      <section class="card info">
+        <h3>Sources & API</h3>
+        <p>Consultez la traçabilité des sources officielles, API et catalogues publics utilisés ou surveillés par le site.</p>
+        <a class="btn primary" href="sources.html">Voir les sources</a>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footin">
+      <div>
+        <b>Annuaire CCAM Santé</b>
+        <div class="small">Annuaire d’aide à la consultation et au paramétrage. Ne remplace pas les textes officiels ni les règles de facturation applicables.</div>
+      </div>
+      <div><a href="https://www.ameli.fr/accueil-de-la-ccam/" target="_blank" rel="noopener noreferrer">CCAM Ameli</a> · <a href="sources.html">Sources &amp; API</a></div>
+    </div>
+  </footer>
+
+  <script src="data/app-data.js"></script>
+  <script>
+    function homeFormatInt(value) {
+      return Number(value || 0).toLocaleString('fr-FR');
+    }
+
+    function homeFormatDate(value) {
+      if (!value) return 'non renseignée';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    async function loadHomeData() {
+      if (window.CCAM_APP_DATA && typeof window.CCAM_APP_DATA === 'object' && Object.keys(window.CCAM_APP_DATA).length) {
+        return window.CCAM_APP_DATA;
+      }
+
+      const response = await fetch('data/app-data.json?ts=' + Date.now(), { cache: 'no-store' });
+      if (!response.ok) throw new Error('fetch');
+      return response.json();
+    }
+
+    function setHomeStatus(html, color) {
+      const el = document.getElementById('homeStatus');
+      if (!el) return;
+      el.innerHTML = html;
+      if (color) el.style.color = color;
+    }
+
+    function renderHome(data) {
+      const meta = data && typeof data === 'object' ? (data.meta || {}) : {};
+      const records = Array.isArray(data && data.records) ? data.records : [];
+      const medicalCount = records.filter((item) => String(item.domaine || '').toLowerCase().includes('médical')).length;
+      const dentalCount = records.filter((item) => !String(item.domaine || '').toLowerCase().includes('médical')).length;
+      const rac0Count = records.filter((item) => String(item.panier_100_sante || '').toLowerCase().startsWith('rac 0')).length;
+
+      document.getElementById('total').textContent = homeFormatInt(meta.total ?? records.length);
+      document.getElementById('medical').textContent = homeFormatInt(meta.medical ?? medicalCount);
+      document.getElementById('dental').textContent = homeFormatInt(meta.bucco_dentaire ?? meta.dental ?? dentalCount);
+      document.getElementById('rac0').textContent = homeFormatInt(meta.rac0 ?? rac0Count);
+      document.getElementById('generated').textContent = homeFormatDate(meta.generated || meta.updated_at);
+
+      if (!records.length) {
+        setHomeStatus(
+          'Données non disponibles — la base sera synchronisée prochainement. <a href="sources.html">Consulter Sources &amp; API</a>',
+          '#fecaca'
+        );
+        return;
+      }
+
+      setHomeStatus('Données chargées · ' + homeFormatInt(records.length) + ' actes disponibles', '#bbf7d0');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const data = await loadHomeData();
+        renderHome(data);
+      } catch (error) {
+        renderHome({});
+        setHomeStatus(
+          'Données non disponibles — la base sera synchronisée prochainement. <a href="sources.html">Consulter Sources &amp; API</a>',
+          '#fecaca'
+        );
+      }
+    });
+  </script>
+</body>
+</html>
