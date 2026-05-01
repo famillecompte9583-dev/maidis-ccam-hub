@@ -1,1 +1,193 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Changements — Annuaire CCAM Santé</title><link rel="stylesheet" href="style.css"></head><body data-page="changements"><nav class="nav"><div class="navin"><a class="brand" href="index.html"><span class="logo">⚕</span><span>Annuaire CCAM Santé</span></a><button class="menu" aria-label="menu">☰</button><div class="links"><a data-page="index" href="index.html">Accueil</a><a data-page="actes" href="actes.html">Actes</a><a data-page="dossiers" href="dossiers.html">Dossiers</a><a data-page="changements" href="changements.html">Changements</a><a data-page="guides" href="guides.html">Guides</a><a data-page="exports" href="exports.html">Exports</a></div></div></nav><header class="hero"><div class="heroin" style="grid-template-columns:1fr"><div><span class="eyebrow">Suivi automatique</span><h1>Changements récents de la base</h1><p>Comparaison entre la génération actuelle et la précédente : ajouts, retraits et modifications détectées.</p></div></div></header><main class="page"><section id="changesSummary" class="grid3"></section><section class="card" style="margin-top:18px"><div class="tablewrap"><table><thead><tr><th>Type</th><th>Code</th><th>Détail</th></tr></thead><tbody id="changesTable"></tbody></table></div></section></main><footer class="footer"><div class="footin"><div><b>Annuaire CCAM Santé</b><div class="small">Les changements détectés automatiquement sont à vérifier avec les sources officielles.</div></div><div><a href="dossiers.html">Dossiers</a></div></div></footer><script src="data/app-data.js?v=20260426-4"></script><script src="js/common.js?v=20260426-4"></script><script src="js/changes.js?v=20260426-4"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Suivi des ajouts, retraits et modifications détectés entre deux générations de l’Annuaire CCAM Santé avec badges colorés et filtre par type de changement.">
+  <title>Changements — Annuaire CCAM Santé</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="theme.js" defer></script>
+  <script src="nav.js" defer></script>
+</head>
+<body data-page="changements">
+  <div data-nav-root></div>
+
+  <header class="hero">
+    <div class="heroin" style="grid-template-columns:1fr">
+      <div>
+        <span class="eyebrow">Suivi automatique</span>
+        <h1>Changements récents de la base</h1>
+        <p>Comparaison entre la génération actuelle et la précédente : ajouts, retraits et modifications détectés.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section id="changesSummary" class="grid3">
+      <section class="card info">
+        <h3>Ajouts</h3>
+        <p style="font-size:34px;font-weight:950;margin:0">—</p>
+      </section>
+      <section class="card info">
+        <h3>Retraits</h3>
+        <p style="font-size:34px;font-weight:950;margin:0">—</p>
+      </section>
+      <section class="card info">
+        <h3>Modifications</h3>
+        <p style="font-size:34px;font-weight:950;margin:0">—</p>
+      </section>
+    </section>
+
+    <section class="card" style="margin-top:18px">
+      <div class="toolbar" style="grid-template-columns:minmax(240px, 340px) 1fr">
+        <div class="field">
+          <label for="changeType">Type de changement</label>
+          <select id="changeType" class="select">
+            <option value="all">Tous</option>
+            <option value="Ajout">Ajout</option>
+            <option value="Retrait">Retrait</option>
+            <option value="Modification">Modification</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>État</label>
+          <div id="changeStatus" class="state-panel" style="margin:0;padding:13px 14px">
+            <span class="inline-status"><span class="spinner-inline" aria-hidden="true"></span>Chargement des changements…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Code</th>
+              <th>Détail</th>
+            </tr>
+          </thead>
+          <tbody id="changesTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footin">
+      <div>
+        <b>Annuaire CCAM Santé</b>
+        <div class="small">Les changements détectés automatiquement sont à vérifier avec les sources officielles.</div>
+      </div>
+      <div><a href="dossiers.html">Dossiers</a> · <a href="sources.html">Sources &amp; API</a></div>
+    </div>
+  </footer>
+
+  <script src="data/app-data.js"></script>
+  <script>
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, function (char) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+      });
+    }
+
+    function fmtInt(value) {
+      return Number(value || 0).toLocaleString('fr-FR');
+    }
+
+    async function loadChangesData() {
+      if (window.CCAM_APP_DATA && typeof window.CCAM_APP_DATA === 'object' && window.CCAM_APP_DATA.changes) {
+        return window.CCAM_APP_DATA;
+      }
+
+      const response = await fetch('data/app-data.json?ts=' + Date.now(), { cache: 'no-store' });
+      if (!response.ok) throw new Error('fetch');
+      return response.json();
+    }
+
+    function changeBadge(type) {
+      if (type === 'Ajout') return 'badge badge-added';
+      if (type === 'Retrait') return 'badge badge-removed';
+      return 'badge badge-modified';
+    }
+
+    function setStatus(html) {
+      document.getElementById('changeStatus').innerHTML = html;
+    }
+
+    function normalizeChanges(changes) {
+      const rows = [];
+      (Array.isArray(changes.added) ? changes.added : []).forEach((record) => {
+        rows.push({ type: 'Ajout', code: record.code || '—', detail: record.libelle || 'Acte ajouté' });
+      });
+      (Array.isArray(changes.removed) ? changes.removed : []).forEach((record) => {
+        rows.push({ type: 'Retrait', code: record.code || '—', detail: record.libelle || 'Acte retiré' });
+      });
+      (Array.isArray(changes.modified) ? changes.modified : []).forEach((record) => {
+        const fields = Array.isArray(record.fields) && record.fields.length ? 'Champs modifiés : ' + record.fields.join(', ') : (record.libelle || 'Acte modifié');
+        rows.push({ type: 'Modification', code: record.code || '—', detail: fields });
+      });
+      return rows;
+    }
+
+    function renderSummary(changes) {
+      const root = document.getElementById('changesSummary');
+      root.innerHTML = [
+        ['Ajouts', changes.added_count || 0],
+        ['Retraits', changes.removed_count || 0],
+        ['Modifications', changes.modified_count || 0]
+      ].map((item) => `
+        <section class="card info">
+          <h3>${esc(item[0])}</h3>
+          <p style="font-size:34px;font-weight:950;margin:0">${fmtInt(item[1])}</p>
+        </section>
+      `).join('');
+    }
+
+    function renderTable(allRows) {
+      const selected = document.getElementById('changeType').value;
+      const rows = selected === 'all' ? allRows : allRows.filter((row) => row.type === selected);
+      const tbody = document.getElementById('changesTable');
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun résultat pour cette sélection</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((row) => `
+        <tr>
+          <td><span class="${changeBadge(row.type)}">${esc(row.type)}</span></td>
+          <td class="code">${esc(row.code)}</td>
+          <td>${esc(row.detail)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const select = document.getElementById('changeType');
+      let rows = [];
+
+      try {
+        const data = await loadChangesData();
+        const changes = data && typeof data === 'object' ? (data.changes || {}) : {};
+        renderSummary(changes);
+        rows = normalizeChanges(changes);
+
+        if (!rows.length) {
+          setStatus('Aucun changement détecté pour la génération disponible.');
+        } else {
+          setStatus(fmtInt(rows.length) + ' changement(s) détecté(s).');
+        }
+
+        renderTable(rows);
+      } catch (error) {
+        renderSummary({});
+        setStatus('Données non disponibles — la base sera synchronisée prochainement. <a href="sources.html">Consulter Sources &amp; API</a>');
+        document.getElementById('changesTable').innerHTML = '<tr class="empty-row"><td colspan="3">Aucun résultat pour cette sélection</td></tr>';
+      }
+
+      select.addEventListener('change', () => renderTable(rows));
+    });
+  </script>
+</body>
+</html>
