@@ -14,8 +14,10 @@ on:
       - scripts/ai_review_articles.py
       - scripts/validate_public_data.py
       - scripts/common_app.py
+      - scripts/__init__.py
       - requirements.txt
       - tests/**
+      - tests/conftest.py
       - .github/workflows/update-all.yml
   schedule:
     - cron: "17 5,17 * * *"
@@ -31,6 +33,9 @@ jobs:
   update-data:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Récupérer le dépôt
@@ -49,7 +54,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Exécuter les tests de cohérence légers
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Synchroniser la base CCAM
         run: python -m scripts.update_all
