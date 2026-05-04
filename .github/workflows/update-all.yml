@@ -52,13 +52,13 @@ jobs:
         run: pytest -q
 
       - name: Synchroniser la base CCAM
-        run: python scripts/update_all.py
+        run: python -m scripts.update_all
 
       - name: Extraire les dossiers depuis sources officielles stables
-        run: python scripts/enrich_articles_official_sources.py
+        run: python -m scripts.enrich_articles_official_sources
 
       - name: Intégrer api.gouv data.gouv FHIR et MCP
-        run: python scripts/enrich_public_api_sources.py
+        run: python -m scripts.enrich_public_api_sources
 
       - name: Tenter Ameli/Jina/Playwright seulement si aucune source stable ne produit d'article
         run: |
@@ -70,26 +70,26 @@ jobs:
               print(f"Sources officielles stables/API : {len(data['articles'])} article(s), Ameli protégé ignoré.")
           else:
               try:
-                  subprocess.check_call([sys.executable, 'scripts/enrich_articles_jina.py'])
+                  subprocess.check_call([sys.executable, '-m', 'scripts.enrich_articles_jina'])
               except Exception as exc:
                   print(f"Jina ignoré : {exc}")
               data = json.loads(path.read_text(encoding='utf-8'))
               if not data.get('articles'):
-                  subprocess.check_call([sys.executable, 'scripts/enrich_articles_playwright.py'])
+                  subprocess.check_call([sys.executable, '-m', 'scripts.enrich_articles_playwright'])
           PY
 
       - name: Garder le site honnête si aucune source ne donne d'article
-        run: python scripts/ensure_articles.py
+        run: python -m scripts.ensure_articles
 
       - name: Relire densément les dossiers avec Gemini si disponible
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-2.5-flash-lite
           AI_REVIEW_MAX_ARTICLES: "12"
-        run: python scripts/ai_review_articles.py
+        run: python -m scripts.ai_review_articles
 
       - name: Valider les données avant publication
-        run: python scripts/validate_public_data.py
+        run: python -m scripts.validate_public_data
 
       - name: Vérifier les changements
         run: |
