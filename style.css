@@ -773,27 +773,35 @@ th,
 /* theme-light-readability.css intégré */
 :root{
   --light-page-bg:#f4f7fb;
-  --light-page-bg-soft:#eef3f9;
+  --light-page-bg-soft:#eaf0f7;
   --light-card-bg:#ffffff;
   --light-card-bg-alt:#f8fbff;
   --light-text:#0f172a;
-  --light-text-soft:#334155;
-  --light-text-muted:#475467;
+  --light-text-soft:#1f2937;
+  --light-text-muted:#334155;
   --light-border:#d7e0ea;
   --light-border-strong:#c4d1e1;
-  --light-nav-bg:rgba(255,255,255,.95);
+  --light-nav-bg:rgba(255,255,255,.96);
   --light-nav-text:#0f172a;
   --light-nav-link:#334155;
   --light-nav-link-hover-bg:rgba(79,70,229,.10);
-  --light-nav-link-hover-text:#1e293b;
+  --light-nav-link-hover-text:#111827;
+  --light-hero-bg:
+    radial-gradient(circle at 10% 0%, rgba(6,182,212,.16), transparent 35%),
+    radial-gradient(circle at 90% 10%, rgba(79,70,229,.18), transparent 42%),
+    linear-gradient(135deg,#edf5fb,#eceffd);
   --light-hero-text:#0f172a;
   --light-hero-sub:#334155;
   --light-chip-bg:#eef2ff;
+  --light-chip-border:#c7d2fe;
   --light-chip-text:#3730a3;
   --light-note-bg:#fff7d6;
   --light-note-text:#7a2e0e;
   --light-code:#312e81;
   --light-link:#3730a3;
+  --light-ghost-bg:#ffffff;
+  --light-ghost-text:#312e81;
+  --light-ghost-border:#c7d2fe;
 }
 
 body:not(.theme-dark){
@@ -804,6 +812,7 @@ body:not(.theme-dark){
 body:not(.theme-dark) .nav{
   background:var(--light-nav-bg);
   border-bottom:1px solid rgba(15,23,42,.08);
+  box-shadow:0 8px 24px rgba(15,23,42,.04);
 }
 
 body:not(.theme-dark) .brand,
@@ -822,10 +831,53 @@ body:not(.theme-dark) .links a:hover{
 }
 
 body:not(.theme-dark) .hero{
+  background:var(--light-hero-bg);
   color:var(--light-hero-text);
 }
 
-body:not(.theme-dark) .hero p,
+body:not(.theme-dark) .hero h1{
+  color:var(--light-hero-text);
+}
+
+body:not(.theme-dark) .hero p{
+  color:var(--light-hero-sub);
+}
+
+body:not(.theme-dark) .eyebrow{
+  background:var(--light-chip-bg);
+  border-color:var(--light-chip-border);
+  color:var(--light-chip-text);
+}
+
+body:not(.theme-dark) .hero .glass{
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(148,163,184,.22);
+  box-shadow:0 24px 60px rgba(15,23,42,.10);
+}
+
+body:not(.theme-dark) .hero .stat{
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(148,163,184,.20);
+}
+
+body:not(.theme-dark) .hero .stat b{
+  color:#0f172a;
+}
+
+body:not(.theme-dark) .hero .stat span{
+  color:#334155;
+}
+
+body:not(.theme-dark) .card,
+body:not(.theme-dark) .input,
+body:not(.theme-dark) .select,
+body:not(.theme-dark) .pagination button,
+body:not(.theme-dark) .modal-dialog,
+body:not(.theme-dark) .modal-close{
+  background:var(--light-card-bg);
+  border-color:var(--light-border);
+}
+
 body:not(.theme-dark) .section-head p,
 body:not(.theme-dark) .info p,
 body:not(.theme-dark) .info li,
@@ -844,18 +896,9 @@ body:not(.theme-dark) .info h3,
 body:not(.theme-dark) .table-card h3,
 body:not(.theme-dark) .mini .big,
 body:not(.theme-dark) th,
-body:not(.theme-dark) td{
+body:not(.theme-dark) td,
+body:not(.theme-dark) .results strong{
   color:var(--light-text);
-}
-
-body:not(.theme-dark) .card,
-body:not(.theme-dark) .input,
-body:not(.theme-dark) .select,
-body:not(.theme-dark) .pagination button,
-body:not(.theme-dark) .modal-dialog,
-body:not(.theme-dark) .modal-close{
-  background:var(--light-card-bg);
-  border-color:var(--light-border);
 }
 
 body:not(.theme-dark) th,
@@ -886,7 +929,7 @@ body:not(.theme-dark) .article-body a{
 }
 
 body:not(.theme-dark) .sourcepill{
-  background:#e0f2fe;
+  background:#dff4fb;
   color:#0f4c5c;
 }
 
@@ -923,5 +966,35 @@ body:not(.theme-dark) .theme-toggle{
 
 body:not(.theme-dark) .kbd{
   background:#e2e8f0;
+  color:#0f172a;
+}
+
+body:not(.theme-dark) .hero .btn.primary{
+  background:linear-gradient(135deg,#5b43ea,#7c3aed);
+  color:#fff;
+}
+
+body:not(.theme-dark) .hero .btn.ghost{
+  background:var(--light-ghost-bg);
+  color:var(--light-ghost-text);
+  border:1px solid var(--light-ghost-border);
+  box-shadow:0 10px 24px rgba(79,70,229,.10);
+}
+
+body:not(.theme-dark) .hero .btn.ghost:hover{
+  background:#f5f3ff;
+  color:#2e1065;
+}
+
+body:not(.theme-dark) .card{
+  box-shadow:0 18px 40px rgba(15,23,42,.08);
+}
+
+body:not(.theme-dark) .footer{
+  background:#e9eff7;
+  color:#334155;
+}
+
+body:not(.theme-dark) .footer a{
   color:#0f172a;
 }
