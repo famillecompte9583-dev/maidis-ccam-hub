@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T13:22:28+02:00",
+  "generated": "2026-05-05T13:56:00+02:00",
   "timezone": "Europe/Paris",
   "status": "ok",
   "sync_mode": "fresh",
@@ -14,7 +14,7 @@
       "raw_items": 13495,
       "valid_records": 12494,
       "rejected_items": 1001,
-      "duration_seconds": 5.31
+      "duration_seconds": 5.89
     },
     "attempts": [
       {
@@ -24,18 +24,18 @@
         "raw_items": 13495,
         "valid_records": 12494,
         "rejected_items": 1001,
-        "duration_seconds": 5.31,
+        "duration_seconds": 5.89,
         "status": "ok"
       }
     ],
     "message": "Données CCAM fraîches récupérées avec succès.",
-    "started_at": "2026-05-05T13:21:39+02:00",
-    "finished_at": "2026-05-05T13:22:28+02:00",
-    "duration_seconds": 48.98
+    "started_at": "2026-05-05T13:55:15+02:00",
+    "finished_at": "2026-05-05T13:56:00+02:00",
+    "duration_seconds": 44.37
   },
   "regulatory_ccam_articles": {
     "status": "ok",
-    "generated": "2026-05-05T13:22:35+02:00",
+    "generated": "2026-05-05T13:56:07+02:00",
     "count": 3,
     "errors": [
       {
@@ -71,7 +71,7 @@
   },
   "public_api_sources": {
     "status": "ok",
-    "generated": "2026-05-05T13:22:52+02:00",
+    "generated": "2026-05-05T13:56:26+02:00",
     "total": 10,
     "known": 3,
     "api_gouv": 5,
@@ -82,13 +82,13 @@
   },
   "articles_guard": {
     "status": "ok",
-    "generated": "2026-05-05T13:22:52+02:00",
+    "generated": "2026-05-05T13:56:26+02:00",
     "count": 3,
     "message": "Vrais articles présents ; aucun fallback publié."
   },
   "ai_review": {
     "status": "ok",
-    "generated": "2026-05-05T13:23:11+02:00",
+    "generated": "2026-05-05T13:56:47+02:00",
     "provider": "gemini",
     "model": "gemini-2.5-flash-lite",
     "attempted_articles": 3,
